@@ -1,0 +1,94 @@
+name: audio_story_app
+description: "A new Flutter project."
+publish_to: 'none'
+
+version: 1.0.0+5
+
+environment:
+  sdk: '>=3.4.0 <4.0.0'
+
+dependencies:
+  lottie: ^3.1.2
+  flutter:
+    sdk: flutter
+
+  cupertino_icons: ^1.0.8
+  device_info_plus: ^12.2.0
+  timeago: ^3.7.0
+  crypto: ^3.0.3
+  shared_preferences: ^2.3.2
+  url_launcher: ^6.3.0
+  confetti: ^0.7.0
+  purchases_flutter: ^9.12.0
+  
+  audio_service: ^0.18.18 
+
+  firebase_messaging: ^16.1.1
+
+  # --- FIREBASE ---
+  firebase_core: ^4.4.0
+  firebase_auth: ^6.1.4
+  cloud_firestore: ^6.1.2
+  firebase_storage: ^13.0.6
+
+  # --- GOOGLE SIGN-IN ---
+  google_sign_in: ^7.2.0
+
+  # --- UTILITIES ---
+  cached_network_image: ^3.3.1
+  just_audio: 
+  intl: ^0.20.2
+  image_picker: ^1.1.2
+  
+  # For Deep Linking & Sharing
+  app_links: ^6.4.1
+  share_plus: ^10.0.0
+  purchases_ui_flutter: ^9.12.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+  flutter_launcher_icons: ^0.13.1
+  flutter_native_splash: ^2.4.0
+
+flutter:
+  uses-material-design: true
+
+  assets:
+    - assets/animations/bouncing_loader.json
+    - assets/bouncing_loader.json
+    - assets/google_logo.png
+    - assets/backgrounds/
+    - assets/categories/
+    - assets/lottie/language_button_pressing.json
+    - assets/splash/intro.png
+    - assets/lottie/Liquid Tab Bar.json
+
+  fonts:
+    - family: KikoHeadingFont
+      fonts:
+        - asset: assets/fonts/YourHeadingFont.ttf
+          weight: 700
+    - family: KikoBodyFont
+      fonts:
+        - asset: assets/fonts/YourBodyFont-Regular.ttf
+        - asset: assets/fonts/YourBodyFont-Bold.ttf
+          weight: 700
+    # Added Fredoka for Cartoonish Greeting
+    - family: Fredoka
+      fonts:
+        - asset: assets/fonts/Fredoka-Regular.ttf
+
+flutter_launcher_icons:
+  android: "launcher_icon"
+  ios: true
+  image_path: "assets/icon/app_icon.png"
+
+flutter_native_splash:
+  color: "#FFFFFF"
+  color_dark: "#000000"
+  fullscreen: true
+  android_12:
+    color: "#FFFFFF"
+    color_dark: "#000000"

@@ -1,0 +1,94 @@
+// firestore.rules
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    /* ---------- Helpers ---------- */
+    function signedIn() {
+      return request.auth != null;
+    }
+    function isSelf(uid) {
+      return signedIn() && request.auth.uid == uid;
+    }
+
+    /* ---------- Users (profile, settings, playlists, etc.) ---------- */
+    match /users/{uid} {
+      allow read, write: if isSelf(uid);
+    }
+    match /users/{uid}/{sub=**} {
+      allow read, write: if isSelf(uid);
+    }
+
+    /* ---------- Stories & nested data ---------- */
+    match /stories/{storyId} {
+      // Public read
+      allow read: if true;
+
+      // Only allow bumping counters on the story doc
+      allow update: if signedIn()
+        && request.resource.data.diff(resource.data).changedKeys()
+             .hasOnly(['views','likes','dislikes','updatedAt'])
+        && (!('views' in request.resource.data) ||
+            (request.resource.data.views is int && resource.data.views is int))
+        && (!('likes' in request.resource.data) ||
+            (request.resource.data.likes is int && resource.data.likes is int))
+        && (!('dislikes' in request.resource.data) ||
+            (request.resource.data.dislikes is int && resource.data.dislikes is int));
+
+      // Create/delete of whole story docs only from server/admin
+      allow create, delete: if false;
+
+      /* ----- Likes (per-user reaction) ----- */
+      match /likes/{uid} {
+        allow read: if true;
+        allow write: if isSelf(uid)
+          && request.resource.data.keys().hasOnly(['uid','value','updatedAt'])
+          && request.resource.data.uid == request.auth.uid
+          && request.resource.data.value in [-1,0,1];
+      }
+
+      /* ----- Comments ----- */
+      match /comments/{commentId} {
+        allow read: if true;
+
+        // Create a comment
+        allow create: if signedIn()
+          && request.resource.data.keys().hasOnly(
+               ['uid','displayName','photoUrl','text','createdAt','likes','isAdmin']
+             )
+          && request.resource.data.uid == request.auth.uid
+          && request.resource.data.text is string
+          && request.resource.data.text.size() > 0
+          && (!('photoUrl' in request.resource.data) || request.resource.data.photoUrl is string)
+          && (!('likes' in request.resource.data) || request.resource.data.likes is int)
+          && (!('isAdmin' in request.resource.data) || request.resource.data.isAdmin is bool);
+
+        // Allow *only* repliesCount increments (your reply flow does this)
+        allow update: if signedIn()
+          && request.resource.data.diff(resource.data).changedKeys().hasOnly(['repliesCount'])
+          && (request.resource.data.repliesCount is int && resource.data.repliesCount is int);
+
+        // Author can delete own comment
+        allow delete: if signedIn() && resource.data.uid == request.auth.uid;
+
+        /* ----- Replies under a comment ----- */
+        match /replies/{replyId} {
+          allow read: if true;
+
+          allow create: if signedIn()
+            && request.resource.data.keys().hasOnly(
+                 ['uid','displayName','photoUrl','text','createdAt','parentCommentId']
+               )
+            && request.resource.data.uid == request.auth.uid
+            && request.resource.data.text is string
+            && request.resource.data.text.size() > 0
+            && request.resource.data.parentCommentId is string
+            && (!('photoUrl' in request.resource.data) || request.resource.data.photoUrl is string);
+
+          // No client updates/deletes for replies (simpler)
+          allow update, delete: if false;
+        }
+      }
+    }
+  }
+}

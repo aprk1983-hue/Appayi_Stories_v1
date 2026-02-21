@@ -1,0 +1,19 @@
+{
+  "dependencies": {
+    "firebase-admin": "^13.6.1"
+  },
+  "name": "appayi_bedtime_stories_normal",
+  "version": "1.0.0",
+  "description": "A new Flutter project.",
+  "main": "backfill_storyNo.js",
+  "directories": {
+    "lib": "lib",
+    "test": "test"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC"
+}

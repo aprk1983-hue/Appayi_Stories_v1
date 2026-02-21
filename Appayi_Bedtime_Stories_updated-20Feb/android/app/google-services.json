@@ -1,0 +1,62 @@
+{
+  "project_info": {
+    "project_number": "889447214349",
+    "project_id": "my-audio-story-app",
+    "storage_bucket": "my-audio-story-app.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:889447214349:android:d00825d71ef6044c735444",
+        "android_client_info": {
+          "package_name": "com.app.audiostoryapp"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "889447214349-5b576p1cjk7ia7qglllhr3c9a27hjia8.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.app.audiostoryapp",
+            "certificate_hash": "95194ca0f07ca6ae62a0586e3597d0b79e07051d"
+          }
+        },
+        {
+          "client_id": "889447214349-kp3b280bvj18gglau1o5f5n34tch70g5.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.app.audiostoryapp",
+            "certificate_hash": "294b57450653d4a7524bb6b4ca6a7e036c7b81e8"
+          }
+        },
+        {
+          "client_id": "889447214349-ejbs6o7fl5oivuv0c20pr10ruvevp5be.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCYmTKuhpareST4SyYGTSkYu_j_MJvCy80"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "889447214349-ejbs6o7fl5oivuv0c20pr10ruvevp5be.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "889447214349-gu3s88spefusccct9g27c4jm1ufpcpbf.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.example.audioStoryApp"
+              }
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

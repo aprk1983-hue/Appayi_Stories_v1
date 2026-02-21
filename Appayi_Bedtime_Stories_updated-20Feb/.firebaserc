@@ -1,0 +1,10 @@
+{
+  "projects": {
+    "default": "my-audio-story-app",
+    "q": "my-audio-story-app",
+    "prod": "my-audio-story-app",
+    "Appayi Stories": "my-audio-story-app"
+  },
+  "targets": {},
+  "etags": {}
+}

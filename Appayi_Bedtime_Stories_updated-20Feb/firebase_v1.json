@@ -1,0 +1,91 @@
+{
+  "projects": {
+    "default": "my-audio-story-app",
+    "prod": "my-audio-story-app"
+  },
+  "firestore": {
+    "rules": "firestore.rules",
+    "indexes": "firestore.indexes.json"
+  },
+  "flutter": {
+    "platforms": {
+      "android": {
+        "default": {
+          "projectId": "my-audio-story-app",
+          "appId": "1:889447214349:android:d00825d71ef6044c735444",
+          "fileOutput": "android/app/google-services.json"
+        }
+      },
+      "ios": {
+        "default": {
+          "projectId": "my-audio-story-app",
+          "appId": "1:889447214349:ios:971f68a27ca64876735444",
+          "uploadDebugSymbols": false,
+          "fileOutput": "ios/Runner/GoogleService-Info.plist"
+        }
+      },
+      "macos": {
+        "default": {
+          "projectId": "my-audio-story-app",
+          "appId": "1:889447214349:ios:971f68a27ca64876735444",
+          "uploadDebugSymbols": false,
+          "fileOutput": "macos/Runner/GoogleService-Info.plist"
+        }
+      },
+      "dart": {
+        "lib/firebase_options.dart": {
+          "projectId": "my-audio-story-app",
+          "configurations": {
+            "android": "1:889447214349:android:d00825d71ef6044c735444",
+            "ios": "1:889447214349:ios:971f68a27ca64876735444",
+            "macos": "1:889447214349:ios:971f68a27ca64876735444",
+            "web": "1:889447214349:web:611a231a05702113735444",
+            "windows": "1:889447214349:web:a5710fbf63f0517b735444"
+          }
+        }
+      }
+    }
+  },
+  "functions": [
+    {
+      "codebase": "default",
+      "disallowLegacyRuntimeConfig": true,
+      "ignore": [
+        "node_modules",
+        ".git",
+        "firebase-debug.log",
+        "firebase-debug.*.log",
+        "*.local"
+      ],
+      "predeploy": [
+        "npm --prefix \"$RESOURCE_DIR\" run lint",
+        "npm --prefix \"$RESOURCE_DIR\" run build"
+      ],
+      "source": "functions"
+    },
+    {
+      "codebase": "autofill",
+      "disallowLegacyRuntimeConfig": true,
+      "ignore": [
+        "node_modules",
+        ".git",
+        "firebase-debug.log",
+        "firebase-debug.*.log",
+        "*.local"
+      ],
+      "source": "autofill"
+    },
+    {
+      "source": "autofill1",
+      "codebase": "autofill1",
+      "disallowLegacyRuntimeConfig": true,
+      "ignore": [
+        "node_modules",
+        ".git",
+        "firebase-debug.log",
+        "firebase-debug.*.log",
+        "*.local"
+      ]
+    }
+  ]
+}

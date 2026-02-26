@@ -1,10 +1,13 @@
 import 'dart:async';
 import 'dart:ui';
+import 'package:audio_story_app/paywall.dart';
+import 'package:audio_story_app/services/subscription.dart';
 import 'package:flutter/material.dart';
 import 'package:audio_service/audio_service.dart';
 import 'package:audio_story_app/services/app_audio_service.dart';
 import 'package:audio_story_app/widgets/parent_gate.dart' as gate;
-import 'story_player_screen.dart' show StoryPlayerScreen, isStoryPlayerOnTop, storyPlayerRoute;
+import 'story_player_screen.dart'
+    show StoryPlayerScreen, isStoryPlayerOnTop, storyPlayerRoute;
 import 'home_screen.dart';
 import 'search_screen.dart';
 import 'categories_screen.dart';
@@ -22,15 +25,15 @@ class MainTabs extends StatefulWidget {
 
 class _MainTabsState extends State<MainTabs> {
   bool _profilePinBusy = false;
+  bool _subscriptionCheckBusy = false;
 
   StreamSubscription<PlaybackState>? _playbackSub;
   AudioProcessingState _lastProcessingState = AudioProcessingState.idle;
 
   int _index = 0;
-  
-  final Color _neumorphicBase = Colors.black; 
-  final Color _accentColor = Colors.orange; 
-  final Color _inactiveColor = Colors.white54;
+
+  // Track subscription status
+  bool _hasSubscription = false;
 
   final _pages = const [
     HomeScreen(),
@@ -51,9 +54,19 @@ class _MainTabsState extends State<MainTabs> {
   @override
   void initState() {
     super.initState();
+    _checkSubscriptionStatus();
+
+    // Listen to subscription changes
+    SubscriptionService().subscriptionStatus.listen((hasSubscription) {
+      if (mounted) {
+        setState(() {
+          _hasSubscription = hasSubscription;
+        });
+      }
+    });
+
     _playbackSub = AppAudioService.handler.playbackState.listen((state) {
       final proc = state.processingState;
-      // If playback becomes active again (idle -> non-idle) after user dismissed the mini player, show it again.
       if (_lastProcessingState == AudioProcessingState.idle &&
           proc != AudioProcessingState.idle &&
           !miniPlayerVisible.value) {
@@ -63,18 +76,37 @@ class _MainTabsState extends State<MainTabs> {
     });
   }
 
+  Future<void> _checkSubscriptionStatus() async {
+    final hasSubscription =
+        await SubscriptionService().checkSubscriptionStatus();
+    if (mounted) {
+      setState(() {
+        _hasSubscription = hasSubscription;
+      });
+    }
+  }
+
   @override
   void dispose() {
     _playbackSub?.cancel();
     super.dispose();
   }
 
-  void _onNavItemSelected(int i) {
-    // Always gate the Profile tab (index 4) with Parent PIN.
-    if (i == 4 && _index != 4) {
-      _openProfileWithPin();
+  void _onNavItemSelected(int i) async {
+    // Profile tab (index 4) - Always accessible with PIN
+    if (i == 4) {
+      if (_index != 4) {
+        await _openProfileWithPin();
+      }
       return;
     }
+
+    // All other tabs - Check subscription
+    if (!_hasSubscription) {
+      _showSubscribeDialog(context);
+      return;
+    }
+
     setState(() => _index = i);
   }
 
@@ -92,6 +124,51 @@ class _MainTabsState extends State<MainTabs> {
     } finally {
       _profilePinBusy = false;
     }
+  }
+
+  void _showSubscribeDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => AlertDialog(
+        title: const Text(
+          '✨ Premium Feature',
+          style: TextStyle(fontWeight: FontWeight.bold),
+        ),
+        content: const Text(
+            'This section requires a subscription. Subscribe now to access all stories and features!'),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(20),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text(
+              'NOT NOW',
+              style: TextStyle(color: Colors.grey),
+            ),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFFFF9800),
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(30),
+              ),
+            ),
+            onPressed: () {
+              Navigator.pop(ctx);
+              // Navigate to your paywall screen
+              Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                      builder: (context) => RevenueCatSplashScreen()));
+            },
+            child: const Text('SUBSCRIBE NOW'),
+          ),
+        ],
+      ),
+    );
   }
 
   @override
@@ -120,7 +197,6 @@ class _MainTabsState extends State<MainTabs> {
       ),
     );
   }
-
 }
 
 class _NeumorphicBottomBar extends StatelessWidget {
@@ -221,30 +297,30 @@ class _IPhoneBottomBar extends StatelessWidget {
           topRight: Radius.circular(22),
         ),
         child: Container(
-            decoration: BoxDecoration(
-              color: bg,
-              border: Border(top: BorderSide(color: topBorder, width: 1)),
-            ),
-            padding: EdgeInsets.only(bottom: bottomPad),
-            child: Row(
-              children: List.generate(items.length, (i) {
-                final isSelected = i == selectedIndex;
-                final icon = items[i]['icon'] as IconData;
-                final label = (items[i]['label'] as String);
-
-                return Expanded(
-                  child: _IPhoneTabItem(
-                    icon: icon,
-                    label: label,
-                    selected: isSelected,
-                    activeColor: activeColor,
-                    inactiveColor: inactiveColor,
-                    onTap: () => onItemSelected(i),
-                  ),
-                );
-              }),
-            ),
+          decoration: BoxDecoration(
+            color: bg,
+            border: Border(top: BorderSide(color: topBorder, width: 1)),
           ),
+          padding: EdgeInsets.only(bottom: bottomPad),
+          child: Row(
+            children: List.generate(items.length, (i) {
+              final isSelected = i == selectedIndex;
+              final icon = items[i]['icon'] as IconData;
+              final label = (items[i]['label'] as String);
+
+              return Expanded(
+                child: _IPhoneTabItem(
+                  icon: icon,
+                  label: label,
+                  selected: isSelected,
+                  activeColor: activeColor,
+                  inactiveColor: inactiveColor,
+                  onTap: () => onItemSelected(i),
+                ),
+              );
+            }),
+          ),
+        ),
       ),
     );
   }
@@ -300,7 +376,8 @@ class _IPhoneTabItemState extends State<_IPhoneTabItem> {
                 overflow: TextOverflow.ellipsis,
                 style: TextStyle(
                   fontSize: 11,
-                  fontWeight: widget.selected ? FontWeight.w600 : FontWeight.w500,
+                  fontWeight:
+                      widget.selected ? FontWeight.w600 : FontWeight.w500,
                   color: color,
                 ),
               ),
@@ -311,7 +388,6 @@ class _IPhoneTabItemState extends State<_IPhoneTabItem> {
     );
   }
 }
-
 
 class _NeumorphicTabItem extends StatelessWidget {
   final IconData icon;
@@ -398,7 +474,6 @@ class _NeumorphicTabItem extends StatelessWidget {
 // UPDATED MINI PLAYER: BLUEISH TINT, NO TEXT, NAV BUTTONS + EXIT
 // ----------------------------------------------------------------------------------
 
-
 class _MiniPlayerDock extends StatelessWidget {
   const _MiniPlayerDock();
 
@@ -420,7 +495,8 @@ class _MiniPlayerDock extends StatelessWidget {
             builder: (context, stateSnap) {
               final state = stateSnap.data;
               final playing = state?.playing ?? false;
-              final processing = state?.processingState ?? AudioProcessingState.idle;
+              final processing =
+                  state?.processingState ?? AudioProcessingState.idle;
               final hasActive = processing != AudioProcessingState.idle;
 
               return ValueListenableBuilder<bool>(
@@ -458,7 +534,8 @@ class _MiniPlayerDock extends StatelessWidget {
                       ).animate(anim);
                       return FadeTransition(
                         opacity: anim,
-                        child: SlideTransition(position: offsetTween, child: child),
+                        child: SlideTransition(
+                            position: offsetTween, child: child),
                       );
                     },
                     child: child,
@@ -500,7 +577,8 @@ class _MiniPlayerOverlay extends StatelessWidget {
             builder: (context, stateSnap) {
               final state = stateSnap.data;
               final playing = state?.playing ?? false;
-              final processing = state?.processingState ?? AudioProcessingState.idle;
+              final processing =
+                  state?.processingState ?? AudioProcessingState.idle;
               final hasActive = processing != AudioProcessingState.idle;
 
               return ValueListenableBuilder<bool>(
@@ -538,7 +616,8 @@ class _MiniPlayerOverlay extends StatelessWidget {
                       ).animate(anim);
                       return FadeTransition(
                         opacity: anim,
-                        child: SlideTransition(position: offsetTween, child: child),
+                        child: SlideTransition(
+                            position: offsetTween, child: child),
                       );
                     },
                     child: child,
@@ -605,7 +684,6 @@ class _MiniPlayerCard extends StatelessWidget {
                   ),
                 ),
                 const Spacer(),
-
                 IconButton(
                   onPressed: (prevId != null && prevId!.isNotEmpty)
                       ? () => Navigator.of(context).push(
@@ -614,11 +692,12 @@ class _MiniPlayerCard extends StatelessWidget {
                       : null,
                   icon: Icon(
                     Icons.skip_previous_rounded,
-                    color: (prevId != null && prevId!.isNotEmpty) ? Colors.white : Colors.white24,
+                    color: (prevId != null && prevId!.isNotEmpty)
+                        ? Colors.white
+                        : Colors.white24,
                     size: 28,
                   ),
                 ),
-
                 IconButton(
                   onPressed: () => playing
                       ? AppAudioService.handler.pause()
@@ -631,7 +710,6 @@ class _MiniPlayerCard extends StatelessWidget {
                     size: 44,
                   ),
                 ),
-
                 IconButton(
                   onPressed: (nextId != null && nextId!.isNotEmpty)
                       ? () => Navigator.of(context).push(
@@ -640,13 +718,13 @@ class _MiniPlayerCard extends StatelessWidget {
                       : null,
                   icon: Icon(
                     Icons.skip_next_rounded,
-                    color: (nextId != null && nextId!.isNotEmpty) ? Colors.white : Colors.white24,
+                    color: (nextId != null && nextId!.isNotEmpty)
+                        ? Colors.white
+                        : Colors.white24,
                     size: 28,
                   ),
                 ),
-
                 const Spacer(),
-
                 IconButton(
                   onPressed: () async => await onClose(),
                   icon: const Icon(
@@ -697,7 +775,6 @@ class _ArtThumb extends StatelessWidget {
     );
   }
 }
-
 
 // ---------------------------------------------------------------------------
 // Smooth tab switching (keeps tab state, avoids “flash”)
@@ -755,7 +832,9 @@ class _FadeIndexedStackState extends State<_FadeIndexedStack> {
   Widget build(BuildContext context) {
     return Stack(
       children: List.generate(widget.children.length, (i) {
-        final show = _transitioning ? (i == _current || i == _previous) : (i == _current);
+        final show = _transitioning
+            ? (i == _current || i == _previous)
+            : (i == _current);
         final opacity = (i == _current) ? 1.0 : 0.0;
 
         return Positioned.fill(

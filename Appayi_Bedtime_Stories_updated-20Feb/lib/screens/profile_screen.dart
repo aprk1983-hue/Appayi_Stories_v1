@@ -5,20 +5,17 @@ import 'package:flutter/services.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_storage/firebase_storage.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
-import 'package:image_picker/image_picker.dart';
 import 'package:device_info_plus/device_info_plus.dart';
+import 'package:purchases_flutter/purchases_flutter.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import 'package:audio_story_app/services/auth_service.dart';
 import 'package:audio_story_app/services/device_id_service.dart';
 import 'package:audio_story_app/services/device_limit_service.dart';
-import 'package:audio_story_app/services/device_info_service.dart';
 import 'package:audio_story_app/screens/onboarding_screen.dart';
 import 'package:audio_story_app/screens/language_selection_screen.dart';
-import 'package:audio_story_app/screens/onboarding_carousel_screen.dart';
 import 'package:audio_story_app/screens/master_profile_screen.dart';
 import 'package:audio_story_app/screens/parental_controls_screen.dart';
 
@@ -50,11 +47,85 @@ class _ProfileScreenState extends State<ProfileScreen> {
   String? _deviceModel;
 
   final bool _showDeviceTile = false;
+// Add these variables
+  bool _isLoadingSubscription = true;
+  String _currentPlan = 'Free';
+  String _planPeriod = '';
+  String _expirationDate = '';
+  bool _hasSubscription = false;
+  Future<void> _loadSubscriptionData() async {
+    try {
+      final user = _auth.currentUser;
+      if (user == null) {
+        setState(() {
+          _isLoadingSubscription = false;
+          _currentPlan = 'Free';
+        });
+        return;
+      }
+
+      // Get customer info from RevenueCat
+      final customerInfo = await Purchases.getCustomerInfo();
+      final active = customerInfo.entitlements.active;
+
+      if (active.isEmpty) {
+        setState(() {
+          _isLoadingSubscription = false;
+          _currentPlan = 'Free';
+          _hasSubscription = false;
+        });
+        return;
+      }
+
+      // Check for your entitlement (adjust ID as needed)
+      final entitlement =
+          active['premium'] ?? active['premium_tier'] ?? active.values.first;
+
+      if (entitlement != null) {
+        final productId = entitlement.productIdentifier.toLowerCase();
+        String period = '';
+
+        // Determine if monthly or yearly
+        if (productId.contains('month') || productId.contains('monthly')) {
+          period = 'Monthly';
+        } else if (productId.contains('year') ||
+            productId.contains('annual') ||
+            productId.contains('yearly')) {
+          period = 'Yearly';
+        } else {
+          period = '';
+        }
+
+        String planName = 'Premium';
+        if (productId.contains('basic')) {
+          planName = 'Basic';
+        } else if (productId.contains('pro')) {
+          planName = 'Pro';
+        }
+
+        setState(() {
+          _isLoadingSubscription = false;
+          _currentPlan = planName;
+          _planPeriod = period;
+          // _expirationDate = expiration;
+          _hasSubscription = true;
+        });
+      }
+    } catch (e) {
+      debugPrint('Error loading subscription: $e');
+      setState(() {
+        _isLoadingSubscription = false;
+        _currentPlan = 'Free';
+        _hasSubscription = false;
+      });
+    }
+  }
 
   @override
   void initState() {
     super.initState();
     _loadData();
+    _loadSubscriptionData();
   }
 
   // ---------------------------------------------------------------------------
@@ -600,17 +671,22 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
           _buildSectionHeader('Account Actions'),
 
+          // Replace the existing _ProfileInfoTile for 'My Plan' with this:
           _ProfileInfoTile(
             icon: Icons.receipt_long_rounded,
             title: 'My Plan',
-            value: 'Coming soon',
+            value: _isLoadingSubscription
+                ? 'Loading...'
+                : _hasSubscription
+                    ? _planPeriod.isEmpty
+                        ? _currentPlan
+                        : '$_currentPlan • $_planPeriod'
+                    : 'Free',
             cardColor: cardColor,
             textColor: textColor,
             accentColor: accentColor,
             secondaryTextColor: secondaryTextColor,
           ),
-
-
           _ProfileNavTile(
             icon: Icons.password_rounded,
             title: 'Change Password',
@@ -676,7 +752,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 }
-
 
 // ---------------------------------------------------------------------------
 // Change Password (email/password users only)
@@ -852,7 +927,6 @@ class _ChangePasswordPageState extends State<_ChangePasswordPage> {
             ),
           ),
           const SizedBox(height: 16),
-
           if (_isPasswordUser) ...[
             TextField(
               controller: _currentCtrl,
@@ -1040,7 +1114,8 @@ class _ManageDevicesPageState extends State<_ManageDevicesPage> {
           title: const Text('Manage Devices'),
         ),
         body: const Center(
-          child: Text('Not signed in.', style: TextStyle(color: Colors.white70)),
+          child:
+              Text('Not signed in.', style: TextStyle(color: Colors.white70)),
         ),
       );
     }

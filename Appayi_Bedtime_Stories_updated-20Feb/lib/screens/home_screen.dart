@@ -2,10 +2,12 @@
 import 'dart:async';
 import 'dart:io';
 // Subscription gating removed: all stories are available for everyone.
+import 'package:audio_story_app/services/subscription.dart';
+import 'package:audio_story_app/widgets/LOCK.dart';
+import 'package:audio_story_app/widgets/premium_subscribe_dialog_no_use.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:audio_story_app/widgets/background_container.dart';
 import 'package:lottie/lottie.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -26,6 +28,8 @@ import 'package:audio_story_app/screens/downloaded_stories_screen.dart';
 import 'package:audio_story_app/services/offline_story_store.dart';
 import 'package:audio_story_app/utils/language_data.dart';
 import 'package:audio_story_app/widgets/app_loaders.dart';
+
+import '../paywall.dart';
 
 /* --------------------------------------------------------------------------
  * Story badge helpers
@@ -80,7 +84,6 @@ class _HomeScreenState extends State<HomeScreen>
   String? _localAvatarPath;
   final ImagePicker _imagePicker = ImagePicker();
 
-
   static final Set<String> _hiddenCategoryNames = <String>{
     'bedtime stories',
     'science and environmental',
@@ -126,7 +129,6 @@ class _HomeScreenState extends State<HomeScreen>
   StreamSubscription<Uri>? _linkSubscription;
   bool _deepLinkNavigating = false;
 
-
   // -------------------- DEVICE LIMIT WATCH --------------------
   static const Color _vibrantBlue = Color(0xFF061B3A);
   static const Color _accentOrange = Color(0xFFFF9800);
@@ -170,7 +172,6 @@ class _HomeScreenState extends State<HomeScreen>
   void initState() {
     super.initState();
 
-
     _loadLocalAvatar();
     _userSub = _userStream().listen((data) {
       if (!mounted) return;
@@ -193,7 +194,6 @@ class _HomeScreenState extends State<HomeScreen>
     _initDeepLinks();
     _startDeviceWatch();
   }
-
 
   Future<void> _startDeviceWatch() async {
     final user = FirebaseAuth.instance.currentUser;
@@ -233,7 +233,8 @@ class _HomeScreenState extends State<HomeScreen>
         builder: (dialogContext) {
           return Dialog(
             backgroundColor: Colors.transparent,
-            insetPadding: const EdgeInsets.symmetric(horizontal: 18, vertical: 24),
+            insetPadding:
+                const EdgeInsets.symmetric(horizontal: 18, vertical: 24),
             child: Container(
               decoration: BoxDecoration(
                 color: _vibrantBlue,
@@ -284,13 +285,16 @@ class _HomeScreenState extends State<HomeScreen>
                         ),
                         onPressed: () async {
                           // Close dialog, then go to sign-in (AuthGate) using the dialog's context.
-                          Navigator.of(dialogContext, rootNavigator: true).pop();
+                          Navigator.of(dialogContext, rootNavigator: true)
+                              .pop();
 
                           // Let the pop complete before navigating.
-                          await Future<void>.delayed(const Duration(milliseconds: 10));
+                          await Future<void>.delayed(
+                              const Duration(milliseconds: 10));
                           if (!dialogContext.mounted) return;
 
-                          Navigator.of(dialogContext, rootNavigator: true).pushAndRemoveUntil(
+                          Navigator.of(dialogContext, rootNavigator: true)
+                              .pushAndRemoveUntil(
                             MaterialPageRoute(builder: (_) => const AuthGate()),
                             (r) => false,
                           );
@@ -310,7 +314,6 @@ class _HomeScreenState extends State<HomeScreen>
       );
     });
   }
-
 
   Future<void> _initDeepLinks() async {
     _appLinks = AppLinks();
@@ -623,6 +626,52 @@ class _HomeScreenState extends State<HomeScreen>
     );
   }
 
+// Add this method to your _HomeScreenState class
+  void _showSubscribeDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => AlertDialog(
+        title: const Text(
+          '✨ Premium Content',
+          style: TextStyle(fontWeight: FontWeight.bold),
+        ),
+        content: const Text(
+            'This section requires a subscription. Subscribe now to access all stories and features!'),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(20),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text(
+              'NOT NOW',
+              style: TextStyle(color: Colors.grey),
+            ),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFFFF9800),
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(30),
+              ),
+            ),
+            onPressed: () {
+              Navigator.pop(ctx);
+              // Navigate to your paywall screen
+              Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                      builder: (context) => RevenueCatSplashScreen()));
+            },
+            child: const Text('SUBSCRIBE NOW'),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     super.build(context);
@@ -656,20 +705,23 @@ class _HomeScreenState extends State<HomeScreen>
     final List<String> langButtons =
         _selectedLanguages.isNotEmpty ? _selectedLanguages : <String>['en'];
     const double pinnedLangHeaderHeight = 44 + 16;
+    // Add subscription check
+    final subscriptionService = SubscriptionService();
+    final hasSubscription = subscriptionService.hasActiveSubscription;
 
     return StaticBlueBackground(
-child: Scaffold(
-          backgroundColor: Colors.transparent,
-          appBar: AppBar(
-            backgroundColor: Colors.transparent,
-            surfaceTintColor: Colors.transparent,
-            scrolledUnderElevation: 0,
-            shadowColor: Colors.transparent,
-            elevation: 0,
-            titleSpacing: 16,
-            title: Row(
-              children: [
-                GestureDetector(
+        child: Scaffold(
+      backgroundColor: Colors.transparent,
+      appBar: AppBar(
+        backgroundColor: Colors.transparent,
+        surfaceTintColor: Colors.transparent,
+        scrolledUnderElevation: 0,
+        shadowColor: Colors.transparent,
+        elevation: 0,
+        titleSpacing: 16,
+        title: Row(
+          children: [
+            GestureDetector(
               onTap: _showAvatarPickerSheet,
               child: Stack(
                 children: [
@@ -700,179 +752,293 @@ child: Scaffold(
                         color: Colors.black.withOpacity(0.6),
                         shape: BoxShape.circle,
                       ),
-                      child: const Icon(Icons.edit,
-                          size: 10, color: Colors.white),
+                      child:
+                          const Icon(Icons.edit, size: 10, color: Colors.white),
                     ),
                   ),
                 ],
               ),
             ),
             const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('Welcome', style: TextStyle(color: onBg2, fontSize: 14)),
+                  Text(
+                    greetName,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                        color: nameColor,
+                        fontWeight: FontWeight.w900,
+                        fontFamily: 'Fredoka',
+                        letterSpacing: 1.2,
+                        shadows: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.15),
+                            blurRadius: 3,
+                            offset: const Offset(1, 1),
+                          )
+                        ],
+                        fontSize: 20),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          // Downloads button - LOCKED for non-subscribers
+          hasSubscription
+              ? IconButton(
+                  tooltip: 'Downloads',
+                  icon: Icon(Icons.download_for_offline_rounded, color: onBg),
+                  onPressed: () =>
+                      Navigator.of(context).push(_downloadsRoute()),
+                )
+              : IconButton(
+                  tooltip: 'Downloads (Premium)',
+                  icon: Stack(
+                    clipBehavior: Clip.none,
                     children: [
-                      Text('Welcome',
-                          style: TextStyle(color: onBg2, fontSize: 14)),
-                      Text(
-                        greetName,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                            color: nameColor,
-                            fontWeight: FontWeight.w900,
-                            fontFamily: 'Fredoka',
-                            letterSpacing: 1.2,
-                            shadows: [
-                              BoxShadow(
-                                color: Colors.black.withOpacity(0.15),
-                                blurRadius: 3,
-                                offset: const Offset(1, 1),
-                              )
-                            ],
-                            fontSize: 20),
+                      Icon(Icons.download_for_offline_rounded,
+                          color: onBg.withOpacity(0.5)),
+                      Positioned(
+                        top: -2,
+                        right: -2,
+                        child: Container(
+                          padding: const EdgeInsets.all(2),
+                          decoration: const BoxDecoration(
+                            color: Color(0xFFFF9800),
+                            shape: BoxShape.circle,
+                          ),
+                          child: const Icon(
+                            Icons.lock_outline,
+                            size: 12,
+                            color: Colors.white,
+                          ),
+                        ),
                       ),
                     ],
                   ),
+                  onPressed: () => _showSubscribeDialog(context),
                 ),
-              ],
-            ),
-            actions: [
-              IconButton(
-                tooltip: 'Downloads',
-                icon: Icon(Icons.download_for_offline_rounded, color: onBg),
-                onPressed: () => Navigator.of(context).push(_downloadsRoute()),
-              ),
-              IconButton(
-                tooltip: 'Rewards',
-                icon: _goldTrophyIcon(onBg),
-                onPressed: () => Navigator.of(context).push(_rewardsRoute()),
-              ),
-              const SizedBox(width: 8), // In your AppBar actions, add:
-            ],
-          ),
-          body: RefreshIndicator(
-            onRefresh: () async => setState(() {}),
-            child: CustomScrollView(
-              physics: const AlwaysScrollableScrollPhysics(),
-              slivers: [
-                // After AppBar, add this banner for non-subscribers
 
-                const SliverToBoxAdapter(child: SizedBox(height: 10)),
-                SliverPersistentHeader(
-                  pinned: true,
-                  delegate: _LanguageHeaderDelegate(
-                    height: pinnedLangHeaderHeight,
-                    backgroundColor: bg,
-                    child: Padding(
-                      padding: const EdgeInsets.fromLTRB(12, 8, 12, 8),
-                      child: _LanguageButtonsRow(
-                        languages: langButtons,
-                        active: _activeLanguage.isNotEmpty
-                            ? _activeLanguage
-                            : ((_selectedLanguages.contains('en')
-                                ? 'en'
-                                : (_selectedLanguages.isNotEmpty
-                                    ? _selectedLanguages.first
-                                    : 'en'))),
-                        onSelect: (code) =>
-                            setState(() => _activeLanguage = code),
+          // Rewards button - LOCKED for non-subscribers
+          hasSubscription
+              ? IconButton(
+                  tooltip: 'Rewards',
+                  icon: _goldTrophyIcon(onBg),
+                  onPressed: () => Navigator.of(context).push(_rewardsRoute()),
+                )
+              : IconButton(
+                  tooltip: 'Rewards (Premium)',
+                  icon: Stack(
+                    clipBehavior: Clip.none,
+                    children: [
+                      Opacity(
+                        opacity: 0.5,
+                        child: _goldTrophyIcon(onBg),
                       ),
-                    ),
+                      Positioned(
+                        top: -2,
+                        right: -2,
+                        child: Container(
+                          padding: const EdgeInsets.all(2),
+                          decoration: const BoxDecoration(
+                            color: Color(0xFFFF9800),
+                            shape: BoxShape.circle,
+                          ),
+                          child: const Icon(
+                            Icons.lock_outline,
+                            size: 12,
+                            color: Colors.white,
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
+                  onPressed: () => _showSubscribeDialog(context),
                 ),
-                const SliverToBoxAdapter(child: SizedBox(height: 8)),
-                SliverToBoxAdapter(
-                  child: Builder(builder: (context) {
-                    final langCode = (_activeLanguage.isNotEmpty &&
-                            (_selectedLanguages.contains(_activeLanguage)))
+
+          const SizedBox(width: 8),
+        ],
+      ),
+      body: RefreshIndicator(
+        onRefresh: () async => setState(() {}),
+        child: CustomScrollView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          slivers: [
+            // After AppBar, add this banner for non-subscribers
+
+            const SliverToBoxAdapter(child: SizedBox(height: 10)),
+            SliverPersistentHeader(
+              pinned: true,
+              delegate: _LanguageHeaderDelegate(
+                height: pinnedLangHeaderHeight,
+                backgroundColor: bg,
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(12, 8, 12, 8),
+                  child: _LanguageButtonsRow(
+                    languages: langButtons,
+                    active: _activeLanguage.isNotEmpty
                         ? _activeLanguage
-                        : (_selectedLanguages.contains('en')
+                        : ((_selectedLanguages.contains('en')
                             ? 'en'
                             : (_selectedLanguages.isNotEmpty
                                 ? _selectedLanguages.first
-                                : 'en'));
-                    final langName = _langLabelEn(langCode);
-                    final langCategories = _visibleCategories(
-                        LanguageData.categoriesByLang[langCode] ?? []);
+                                : 'en'))),
+                    onSelect: (code) => setState(() => _activeLanguage = code),
+                  ),
+                ),
+              ),
+            ),
+            const SliverToBoxAdapter(child: SizedBox(height: 8)),
+            SliverToBoxAdapter(
+              child: Builder(builder: (context) {
+                final langCode = (_activeLanguage.isNotEmpty &&
+                        (_selectedLanguages.contains(_activeLanguage)))
+                    ? _activeLanguage
+                    : (_selectedLanguages.contains('en')
+                        ? 'en'
+                        : (_selectedLanguages.isNotEmpty
+                            ? _selectedLanguages.first
+                            : 'en'));
+                final langName = _langLabelEn(langCode);
+                final langCategories = _visibleCategories(
+                    LanguageData.categoriesByLang[langCode] ?? []);
 
-                    return Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Padding(
-                          padding: const EdgeInsets.fromLTRB(18, 6, 18, 10),
-                          child: Text(
-                            'What\'s New',
-                            style: TextStyle(
-                                color: Colors.white.withOpacity(0.92),
-                                fontSize: 20,
-                                fontWeight: FontWeight.w800),
-                          ),
-                        ),
-                        _WhatsNewRow(
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(18, 6, 18, 10),
+                      child: Text(
+                        'What\'s New',
+                        style: TextStyle(
+                            color: Colors.white.withOpacity(0.92),
+                            fontSize: 20,
+                            fontWeight: FontWeight.w800),
+                      ),
+                    ),
+                    // What's New section - LOCKED for non-subscribers
+                    hasSubscription
+                        ? _WhatsNewRow(
                             stream: _cachedStream('whatsNew:$langCode',
-                                _qNewest(language: langCode).limit(10))),
-                        _CategorySectionCard(
-                          categories: langCategories,
-                          langCode: langCode,
-                          onTapMore: () => Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                  builder: (_) => const CategoriesScreen())),
-                          onTapCategory: (label, key) => _openViewAll(
-                              title: label,
-                              base: _qNewest(category: key, language: langCode),
-                              orderByField: 'createdAt'),
-                        ),
-                        _SectionCard(
-                          title: 'Popular in $langName',
-                          badgeText: 'Free',
-                          badgeColor: Colors.green,
-                          onMore: null,
-                          child: _HorizontalStories(
-                              stream: _cachedStream('popular:$langCode',
-                                  _qMostLiked(language: langCode).limit(10))),
-                        ),
-                        _SectionCard(
-                          title: 'Most Viewed in $langName',
-                          badgeText: 'Free',
-                          badgeColor: Colors.green,
-                          onMore: null,
-                          child: _HorizontalStories(
-                              stream: _cachedStream('mostViewed:$langCode',
-                                  _qMostViewed(language: langCode).limit(10))),
-                        ),
-                        const SizedBox(height: 6),
-                        ...langCategories.map((c) {
-                          final label = c['label'] ?? '';
-                          final key = c['key'] ?? '';
-                          return _SectionCard(
-                            title: label,
-                            onMore: () => _openViewAll(
+                                _qNewest(language: langCode).limit(10)))
+                        : SubscriptionLock(
+                            onLockPressed: () => _showSubscribeDialog(
+                                context), // Call the function, not just create widget
+                            child: _WhatsNewRow(
+                              stream: _cachedStream('whatsNew:$langCode',
+                                  _qNewest(language: langCode).limit(10)),
+                            ),
+                          ),
+                    // Category section - LOCKED for non-subscribers
+                    hasSubscription
+                        ? _CategorySectionCard(
+                            categories: langCategories,
+                            langCode: langCode,
+                            onTapMore: () => Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                    builder: (_) => const CategoriesScreen())),
+                            onTapCategory: (label, key) => _openViewAll(
                                 title: label,
                                 base:
                                     _qNewest(category: key, language: langCode),
                                 orderByField: 'createdAt'),
-                            child: _HorizontalStories(
+                          )
+                        : SubscriptionLock(
+                            onLockPressed: () => _showSubscribeDialog(context),
+                            child: _CategorySectionCard(
+                              categories: langCategories,
+                              langCode: langCode,
+                              onTapMore: () {
+                                // This won't be called because it's wrapped in SubscriptionLock
+                                // but we need to provide a callback
+                              },
+                              onTapCategory: (label, key) {
+                                // This won't be called because it's wrapped in SubscriptionLock
+                                // but we need to provide a callback
+                              },
+                            ),
+                          ),
+                    _SectionCard(
+                      title: 'Popular in $langName',
+                      badgeText: 'Free',
+                      badgeColor: Colors.green,
+                      onMore: null,
+                      child: _HorizontalStories(
+                          stream: _cachedStream('popular:$langCode',
+                              _qMostLiked(language: langCode).limit(10))),
+                    ),
+                    _SectionCard(
+                      title: 'Most Viewed in $langName',
+                      badgeText: 'Free',
+                      badgeColor: Colors.green,
+                      onMore: null,
+                      child: _HorizontalStories(
+                          stream: _cachedStream('mostViewed:$langCode',
+                              _qMostViewed(language: langCode).limit(10))),
+                    ),
+                    const SizedBox(height: 6),
+                    // Category sections - LOCKED for non-subscribers with premium badge
+                    ...langCategories.map((c) {
+                      final label = c['label'] ?? '';
+                      final key = c['key'] ?? '';
+                      return _SectionCard(
+                        title: label,
+                        badgeText: !hasSubscription
+                            ? 'PREMIUM'
+                            : null, // Add badge for locked sections
+                        badgeColor: const Color(
+                            0xFFFF9800), // Orange color for premium badge
+                        onMore: () {
+                          if (!hasSubscription) {
+                            _showSubscribeDialog(context);
+                            return;
+                          }
+                          _openViewAll(
+                              title: label,
+                              base: _qNewest(category: key, language: langCode),
+                              orderByField: 'createdAt');
+                        },
+                        child: hasSubscription
+                            ? _HorizontalStories(
                                 stream: _cachedStream(
+                                  'cat:$langCode:$key',
+                                  _qNewest(category: key, language: langCode)
+                                      .limit(10),
+                                ),
+                              )
+                            : SubscriptionLock(
+                                onLockPressed: () =>
+                                    _showSubscribeDialog(context),
+                                child: _HorizontalStories(
+                                  stream: _cachedStream(
                                     'cat:$langCode:$key',
                                     _qNewest(category: key, language: langCode)
-                                        .limit(10))),
-                          );
-                        }).toList(),
-                      ],
-                    );
-                  }),
-                ),
-                SliverToBoxAdapter(
-                  child: SizedBox(
-                    height: 24 + MediaQuery.of(context).padding.bottom + 72,
-                  ),
-                ),
-              ],
+                                        .limit(10),
+                                  ),
+                                ),
+                              ),
+                      );
+                    }).toList(),
+                  ],
+                );
+              }),
             ),
-          ),
-        ));
+            SliverToBoxAdapter(
+              child: SizedBox(
+                height: 24 + MediaQuery.of(context).padding.bottom + 72,
+              ),
+            ),
+          ],
+        ),
+      ),
+    ));
   }
 }
 
@@ -1216,7 +1382,12 @@ class _SectionCard extends StatelessWidget {
   final VoidCallback? onMore;
   final Widget child;
 
-  const _SectionCard({required this.title, required this.child, this.onMore, this.badgeText, this.badgeColor});
+  const _SectionCard(
+      {required this.title,
+      required this.child,
+      this.onMore,
+      this.badgeText,
+      this.badgeColor});
 
   @override
   Widget build(BuildContext context) {
@@ -1242,41 +1413,41 @@ class _SectionCard extends StatelessWidget {
               children: [
                 Expanded(
                   child: Row(
-                      children: [
-                        Expanded(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          title,
+                          style: TextStyle(
+                              color: onBg,
+                              fontWeight: FontWeight.w800,
+                              fontSize: 18),
+                        ),
+                      ),
+                      if (badgeText != null)
+                        Container(
+                          margin: const EdgeInsets.only(left: 8),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 8, vertical: 2),
+                          decoration: BoxDecoration(
+                            color:
+                                (badgeColor ?? Colors.green).withOpacity(0.15),
+                            borderRadius: BorderRadius.circular(999),
+                            border: Border.all(
+                              color:
+                                  (badgeColor ?? Colors.green).withOpacity(0.6),
+                            ),
+                          ),
                           child: Text(
-                            title,
-                    style: TextStyle(
-                                color: onBg,
-                                fontWeight: FontWeight.w800,
-                                fontSize: 18),
+                            badgeText!,
+                            style: TextStyle(
+                              color: badgeColor ?? Colors.green,
+                              fontSize: 11,
+                              fontWeight: FontWeight.w700,
+                            ),
                           ),
                         ),
-                        if (badgeText != null)
-                          Container(
-                            margin: const EdgeInsets.only(left: 8),
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 8, vertical: 2),
-                            decoration: BoxDecoration(
-                              color: (badgeColor ?? Colors.green)
-                                  .withOpacity(0.15),
-                              borderRadius: BorderRadius.circular(999),
-                              border: Border.all(
-                                color: (badgeColor ?? Colors.green)
-                                    .withOpacity(0.6),
-                              ),
-                            ),
-                            child: Text(
-                              badgeText!,
-                              style: TextStyle(
-                                color: badgeColor ?? Colors.green,
-                                fontSize: 11,
-                                fontWeight: FontWeight.w700,
-                              ),
-                            ),
-                          ),
-                      ],
-                    ),
+                    ],
+                  ),
                 ),
                 if (onMore != null)
                   TextButton.icon(
@@ -1469,7 +1640,6 @@ class _GenreTile extends StatelessWidget {
     );
   }
 }
-
 
 class _BlinkingFreeBadge extends StatefulWidget {
   final String text;
@@ -2312,13 +2482,12 @@ class _LangNoBadge extends StatelessWidget {
   }
 }
 
-
-
 class StaticBlueBackground extends StatelessWidget {
   final Widget child;
   final double dimOpacity;
 
-  const StaticBlueBackground({super.key, required this.child, this.dimOpacity = 0.0});
+  const StaticBlueBackground(
+      {super.key, required this.child, this.dimOpacity = 0.0});
 
   @override
   Widget build(BuildContext context) {

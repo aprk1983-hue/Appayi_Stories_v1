@@ -106,16 +106,15 @@ class _OnboardingCarouselScreenState extends State<OnboardingCarouselScreen> {
 
     if (!mounted) return;
 
-        // Only show the *system* notification permission prompt (no custom dialog).
+    // Only show the *system* notification permission prompt (no custom dialog).
     final req = await FirebaseMessaging.instance.requestPermission(
       alert: true,
       badge: true,
       sound: true,
     );
 
-    final granted =
-        req.authorizationStatus == AuthorizationStatus.authorized ||
-            req.authorizationStatus == AuthorizationStatus.provisional;
+    final granted = req.authorizationStatus == AuthorizationStatus.authorized ||
+        req.authorizationStatus == AuthorizationStatus.provisional;
 
     if (granted) {
       await prefs.setBool('notify_new_stories', true);
@@ -191,14 +190,6 @@ class _OnboardingCarouselScreenState extends State<OnboardingCarouselScreen> {
         );
       }),
     );
-  }
-
-  @override
-  void initState() async {
-    super.initState();
-
-//   // Initialize audio service
-    await AppAudioService.init();
   }
 
   @override

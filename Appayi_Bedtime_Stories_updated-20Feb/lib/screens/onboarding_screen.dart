@@ -45,11 +45,11 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   bool _saving = false;
   // --- REMOVED AUTH LISTENER ---
 
-  @override
-  void initState() {
-    super.initState();
-    // --- REMOVED AUTH LISTENER LOGIC ---
-  }
+  // @override
+  // void initState() {
+  //   super.initState();
+  //   // --- REMOVED AUTH LISTENER LOGIC ---
+  // }
 
   @override
   void dispose() {
@@ -75,8 +75,8 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
             children: [
               ListTile(
                 leading: const Icon(Icons.photo_camera, color: Colors.white),
-                title:
-                    const Text('Take Photo', style: TextStyle(color: Colors.white)),
+                title: const Text('Take Photo',
+                    style: TextStyle(color: Colors.white)),
                 onTap: () async {
                   Navigator.pop(context);
                   await _pickAndUpload(ImageSource.camera);
@@ -111,8 +111,8 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     final bytes = await x.readAsBytes();
     setState(() => _previewBytes = bytes);
 
-    await _uploadToStorage(
-        bytes, x.name.toLowerCase().endsWith('.png') ? 'image/png' : 'image/jpeg');
+    await _uploadToStorage(bytes,
+        x.name.toLowerCase().endsWith('.png') ? 'image/png' : 'image/jpeg');
   }
 
   Future<void> _uploadToStorage(Uint8List data, String contentType) async {
@@ -186,7 +186,8 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
       // --- Navigation fix to prevent "white flash" ---
       Navigator.of(context).pushAndRemoveUntil(
         PageRouteBuilder(
-          pageBuilder: (context, animation, secondaryAnimation) => const AuthGate(),
+          pageBuilder: (context, animation, secondaryAnimation) =>
+              const AuthGate(),
           // Make the transition instant
           transitionDuration: Duration.zero,
           reverseTransitionDuration: Duration.zero,
@@ -194,7 +195,6 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
         (r) => false,
       );
       // --- End of navigation fix ---
-
     } on FirebaseException catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -255,7 +255,9 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                         ? activeColor.withOpacity(0.2)
                         : Colors.grey.shade800, // ✨ CHANGED
                     border: Border.all(
-                      color: selected ? activeColor : Colors.grey.shade600, // ✨ CHANGED
+                      color: selected
+                          ? activeColor
+                          : Colors.grey.shade600, // ✨ CHANGED
                       width: selected ? 2 : 1,
                     ),
                   ),
@@ -350,10 +352,12 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
               width: 112, height: 112, fit: BoxFit.cover));
     } else if (_photoUrl != null) {
       avatarChild = ClipOval(
-        child: Image.network(_photoUrl!, width: 112, height: 112,
+        child: Image.network(_photoUrl!,
+            width: 112,
+            height: 112,
             fit: BoxFit.cover,
-            errorBuilder: (_, __, ___) =>
-                const Icon(Icons.emoji_emotions, size: 56, color: Colors.white)),
+            errorBuilder: (_, __, ___) => const Icon(Icons.emoji_emotions,
+                size: 56, color: Colors.white)),
       );
     } else {
       avatarChild = ClipOval(
@@ -458,11 +462,13 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                         const SizedBox(height: 8),
                         Text(
                           'Upload Profile Photo',
-                          style:
-                              Theme.of(context).primaryTextTheme.labelLarge?.copyWith(
-                                    fontFamily: AppTheme.bodyFont,
-                                    color: Colors.white,
-                                  ),
+                          style: Theme.of(context)
+                              .primaryTextTheme
+                              .labelLarge
+                              ?.copyWith(
+                                fontFamily: AppTheme.bodyFont,
+                                color: Colors.white,
+                              ),
                         ),
                         const SizedBox(height: 24),
                         TextFormField(
@@ -506,8 +512,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                             padding: const EdgeInsets.symmetric(
                                 horizontal: 20, vertical: 24),
                             decoration: BoxDecoration(
-                              color:
-                                  Colors.black.withOpacity(0.65),
+                              color: Colors.black.withOpacity(0.65),
                               borderRadius: BorderRadius.circular(28),
                             ),
                             child: Row(
@@ -553,8 +558,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                             style: ElevatedButton.styleFrom(
                               backgroundColor: Colors.orange,
                               foregroundColor: Colors.black,
-                              padding:
-                                  const EdgeInsets.symmetric(vertical: 14),
+                              padding: const EdgeInsets.symmetric(vertical: 14),
                               shape: RoundedRectangleBorder(
                                   borderRadius: BorderRadius.circular(28)),
                               textStyle: TextStyle(

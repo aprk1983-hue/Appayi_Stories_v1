@@ -1,5 +1,6 @@
 // lib/main.dart
 import 'package:audio_story_app/paywall.dart';
+import 'package:audio_story_app/services/SubProvider.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'dart:async';
@@ -7,6 +8,7 @@ import 'package:audio_service/audio_service.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:provider/provider.dart';
 import 'package:purchases_flutter/purchases_flutter.dart';
 import 'package:purchases_ui_flutter/views/paywall_view.dart';
 
@@ -97,47 +99,71 @@ void main() async {
   );
   // // Initialize AudioService FIRST (this was the missing piece!)
   await AppAudioService.init();
-  // // Initialize RevenueCat
-  // await Purchases.setLogLevel(LogLevel.debug);
-  // await Purchases.configure(
-  //   PurchasesConfiguration("goog_hDJJIjRdZpkNoEMOMsGsYukoQMW"),
-  // );
-
-  // // Log in if user exists
-  // final user = FirebaseAuth.instance.currentUser;
-  // if (user != null) {
-  //   await Purchases.logIn(user.uid);
-  // }
 
   // Initialize ThemeController
   await ThemeController.instance.init();
 
   runApp(const MyApp());
 }
-// void main() async {
-//   WidgetsFlutterBinding.ensureInitialized();
-//   await Firebase.initializeApp(
-//     options: DefaultFirebaseOptions.currentPlatform,
-//   );
 
-//   // Initialize RevenueCat
-//   await Purchases.setLogLevel(LogLevel.debug);
-//   await Purchases.configure(
-//       PurchasesConfiguration("goog_hDJJIjRdZpkNoEMOMsGsYukoQMW"));
+// class MyApp extends StatefulWidget {
+//   const MyApp({super.key});
 
-//   // Log in if user exists
-//   final user = FirebaseAuth.instance.currentUser;
-//   if (user != null) {
-//     await Purchases.logIn(user.uid);
-//   }
-
-//   // Initialize audio service
-//   await AppAudioService.init();
-
-//   await ThemeController.instance.init();
-//   runApp(const MyApp());
+//   @override
+//   State<MyApp> createState() => _MyAppState();
 // }
 
+// class _MyAppState extends State<MyApp> {
+//   final GlobalKey<NavigatorState> _navKey = GlobalKey<NavigatorState>();
+//   StreamSubscription<bool>? _notifClickSub;
+
+//   @override
+//   void initState() {
+//     super.initState();
+// // When the user taps the media notification, go to HOME (root) and keep playing.
+//     _notifClickSub = AudioService.notificationClicked.listen((clicked) {
+//       if (!clicked) return;
+//       _navKey.currentState?.popUntil((r) => r.isFirst);
+//     });
+//   }
+
+//   @override
+//   void dispose() {
+//     _notifClickSub?.cancel();
+//     super.dispose();
+//   }
+
+//   @override
+//   Widget build(BuildContext context) {
+//     return AnimatedBuilder(
+//       animation: ThemeController.instance,
+//       builder: (context, _) {
+//         return Container(
+//           color: Colors.black,
+//           child: MaterialApp(
+//             navigatorKey: _navKey,
+//             navigatorObservers: [appRouteObserver],
+//             title: 'Kiko Stories',
+//             debugShowCheckedModeBanner: false,
+//             theme: AppTheme.lightTheme,
+//             darkTheme: AppTheme.darkTheme,
+//             themeMode: ThemeController.instance.materialMode,
+//             builder: (context, child) {
+//               return AppBackground(
+//                 animated: true,
+//                 child: child ?? const SizedBox.shrink(),
+//               );
+//             },
+//             // home: const _AppLifecycle(child: IntroSplashScreen()),
+//             home: const _AppLifecycle(
+//                 child:
+//                     RevenueCatSplashScreen()), // Changed from IntroSplashScreen
+//           ),
+//         );
+//       },
+//     );
+//   }
+// }
 class MyApp extends StatefulWidget {
   const MyApp({super.key});
 
@@ -152,7 +178,6 @@ class _MyAppState extends State<MyApp> {
   @override
   void initState() {
     super.initState();
-// When the user taps the media notification, go to HOME (root) and keep playing.
     _notifClickSub = AudioService.notificationClicked.listen((clicked) {
       if (!clicked) return;
       _navKey.currentState?.popUntil((r) => r.isFirst);
@@ -172,24 +197,31 @@ class _MyAppState extends State<MyApp> {
       builder: (context, _) {
         return Container(
           color: Colors.black,
-          child: MaterialApp(
-            navigatorKey: _navKey,
-            navigatorObservers: [appRouteObserver],
-            title: 'Kiko Stories',
-            debugShowCheckedModeBanner: false,
-            theme: AppTheme.lightTheme,
-            darkTheme: AppTheme.darkTheme,
-            themeMode: ThemeController.instance.materialMode,
-            builder: (context, child) {
-              return AppBackground(
-                animated: true,
-                child: child ?? const SizedBox.shrink(),
-              );
-            },
-            // home: const _AppLifecycle(child: IntroSplashScreen()),
-            home: const _AppLifecycle(
-                child:
-                    RevenueCatSplashScreen()), // Changed from IntroSplashScreen
+          child: MultiProvider(
+            // Change to MultiProvider
+            providers: [
+              // Add your providers here
+              ChangeNotifierProvider(create: (_) => SubscriptionProvider()),
+              // Add other providers if you have them
+            ],
+            child: MaterialApp(
+              navigatorKey: _navKey,
+              navigatorObservers: [appRouteObserver],
+              title: 'Kiko Stories',
+              debugShowCheckedModeBanner: false,
+              theme: AppTheme.lightTheme,
+              darkTheme: AppTheme.darkTheme,
+              themeMode: ThemeController.instance.materialMode,
+              builder: (context, child) {
+                return AppBackground(
+                  animated: true,
+                  child: child ?? const SizedBox.shrink(),
+                );
+              },
+              home: const _AppLifecycle(
+                child: RevenueCatSplashScreen(),
+              ),
+            ),
           ),
         );
       },

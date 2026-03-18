@@ -7,14 +7,22 @@
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:889447214349:android:d00825d71ef6044c735444",
+        "mobilesdk_app_id": "1:889447214349:android:9f9ebbc448617b51735444",
         "android_client_info": {
           "package_name": "com.app.audiostoryapp"
         }
       },
       "oauth_client": [
         {
-          "client_id": "889447214349-5b576p1cjk7ia7qglllhr3c9a27hjia8.apps.googleusercontent.com",
+          "client_id": "889447214349-a9mjlldu7mqs2jl9i831oo70dbf98mue.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.app.audiostoryapp",
+            "certificate_hash": "6fcb94d0f103eff199a97534948fd0f6590a393e"
+          }
+        },
+        {
+          "client_id": "889447214349-u280ieoeqjg8d1u85dqosoa8kilb7ms8.apps.googleusercontent.com",
           "client_type": 1,
           "android_info": {
             "package_name": "com.app.audiostoryapp",
@@ -22,10 +30,62 @@
           }
         },
         {
+          "client_id": "889447214349-ejbs6o7fl5oivuv0c20pr10ruvevp5be.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCYmTKuhpareST4SyYGTSkYu_j_MJvCy80"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "889447214349-ejbs6o7fl5oivuv0c20pr10ruvevp5be.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "889447214349-brf5phbh9oji30podaeam5kie9rmssi7.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.appayi.bedtimestories"
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:889447214349:android:d00825d71ef6044c735444",
+        "android_client_info": {
+          "package_name": "com.example.audio_story_app"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "889447214349-2ha9k764k0ipbfdopifvsmjmpsfl57gk.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.example.audio_story_app",
+            "certificate_hash": "6fcb94d0f103eff199a97534948fd0f6590a393e"
+          }
+        },
+        {
+          "client_id": "889447214349-5b576p1cjk7ia7qglllhr3c9a27hjia8.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.example.audio_story_app",
+            "certificate_hash": "95194ca0f07ca6ae62a0586e3597d0b79e07051d"
+          }
+        },
+        {
           "client_id": "889447214349-kp3b280bvj18gglau1o5f5n34tch70g5.apps.googleusercontent.com",
           "client_type": 1,
           "android_info": {
-            "package_name": "com.app.audiostoryapp",
+            "package_name": "com.example.audio_story_app",
             "certificate_hash": "294b57450653d4a7524bb6b4ca6a7e036c7b81e8"
           }
         },
@@ -47,10 +107,10 @@
               "client_type": 3
             },
             {
-              "client_id": "889447214349-gu3s88spefusccct9g27c4jm1ufpcpbf.apps.googleusercontent.com",
+              "client_id": "889447214349-brf5phbh9oji30podaeam5kie9rmssi7.apps.googleusercontent.com",
               "client_type": 2,
               "ios_info": {
-                "bundle_id": "com.example.audioStoryApp"
+                "bundle_id": "com.appayi.bedtimestories"
               }
             }
           ]

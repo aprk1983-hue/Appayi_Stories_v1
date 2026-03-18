@@ -10,6 +10,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:just_audio/just_audio.dart';
 import 'package:audio_story_app/utils/language_data.dart';
 import 'package:audio_story_app/widgets/app_loaders.dart';
+import 'package:lottie/lottie.dart';
 
 /* --------------------------------------------------------------------------
  * Story badge helpers
@@ -60,6 +61,7 @@ class CategoriesScreen extends StatefulWidget {
 
 class _CategoriesScreenState extends State<CategoriesScreen> {
   List<String> _selectedLanguages = ['en'];
+  String _activeLanguage = 'en';
   StreamSubscription? _userSub;
 
   // Cache category cover lookups to avoid many realtime listeners (reduces scroll lag)
@@ -102,6 +104,11 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
       if (langs.isEmpty) langs.add('en');
       setState(() {
         _selectedLanguages = langs;
+        if (_activeLanguage.isEmpty || !_selectedLanguages.contains(_activeLanguage)) {
+          _activeLanguage = _selectedLanguages.contains('en')
+              ? 'en'
+              : _selectedLanguages.first;
+        }
       });
     });
   }
@@ -187,8 +194,21 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
     // Global animated background is applied via MaterialApp.builder.
     // Keep this screen transparent so the shared background is visible.
     final Color bg = const Color(0xFF061531);
-    final Color onBg = dark ? Colors.white : Colors.black;
+    final Color onBg = Colors.white;
     final Color card = dark ? Colors.white.withOpacity(0.06) : Colors.black.withOpacity(0.06);
+
+    final List<String> langButtons =
+        _selectedLanguages.isNotEmpty ? _selectedLanguages : <String>['en'];
+    final String activeLanguage = (_activeLanguage.isNotEmpty &&
+            langButtons.contains(_activeLanguage))
+        ? _activeLanguage
+        : (langButtons.contains('en') ? 'en' : langButtons.first);
+    final List<dynamic> rawLangCategories =
+        LanguageData.categoriesByLang[activeLanguage] ?? [];
+    final List<dynamic> langCategories =
+        activeLanguage == 'ta' && rawLangCategories.isNotEmpty
+            ? rawLangCategories.skip(1).toList()
+            : rawLangCategories;
 
     return Scaffold(
       backgroundColor: bg,
@@ -199,49 +219,288 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
         title: Text('Categories', style: TextStyle(color: onBg)),
         iconTheme: IconThemeData(color: onBg),
       ),
-      body: ListView(
-        padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
+      body: Column(
         children: [
-          // ✨ NEW: Loop through languages
-          ..._selectedLanguages.expand((langCode) {
-            final langName = LanguageData.getLanguageName(langCode);
-            final langCategories = LanguageData.categoriesByLang[langCode] ?? [];
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
+            child: _LanguageButtonsRow(
+              languages: langButtons,
+              active: activeLanguage,
+              onSelect: (code) => setState(() => _activeLanguage = code),
+            ),
+          ),
+          Expanded(
+            child: SafeArea(
+              top: false,
+              child: ListView(
+                padding: EdgeInsets.fromLTRB(
+                  16,
+                  0,
+                  16,
+                  40 + MediaQuery.of(context).padding.bottom,
+                ),
+              children: [
+                Center(
+                  child: Text(
+                    LanguageData.getLanguageName(activeLanguage),
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      fontWeight: FontWeight.w900,
+                      fontSize: 20,
+                      color: onBg,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                if (langCategories.isEmpty)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 24),
+                    child: Center(
+                      child: Text(
+                        'No categories yet',
+                        style: TextStyle(color: onBg.withOpacity(0.8)),
+                      ),
+                    ),
+                  )
+                else
+                  ...langCategories.map((c) {
+                    final label = c['label']!;
+                    final key = c['key']!;
+                    return _CategoryCard(
+                      title: label,
+                      categoryKey: key,
+                      langCode: activeLanguage,
+                      coverFuture: _getCategoryCover(activeLanguage, key),
+                      onTap: () {
+                        _openViewAll(
+                          title: label,
+                          base: _qCategory(category: key, language: activeLanguage),
+                          orderByField: 'createdAt',
+                        );
+                      },
+                      dark: dark,
+                      card: card,
+                      onBg: onBg,
+                    );
+                  }),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
 
-            if (langCategories.isEmpty) return [const SizedBox.shrink()];
+class _LanguageButtonsRow extends StatelessWidget {
+  final List<String> languages;
+  final String active;
+  final ValueChanged<String> onSelect;
 
-            return [
-              const SizedBox(height: 4),
-              Center(
-                child: Text(
-                  langName,
-                  textAlign: TextAlign.center,
-                  style: TextStyle(fontWeight: FontWeight.w900, fontSize: 20, color: onBg),
+  const _LanguageButtonsRow({
+    required this.languages,
+    required this.active,
+    required this.onSelect,
+  });
+
+  String _labelFor(String code) {
+    switch (code) {
+      case 'en':
+        return 'English';
+      case 'hi':
+        return 'Hindi';
+      case 'ta':
+        return 'Tamil';
+      case 'te':
+        return 'Telugu';
+      case 'ml':
+        return 'Malayalam';
+      case 'kn':
+        return 'Kannada';
+      default:
+        return code.toUpperCase();
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final dark = Theme.of(context).brightness == Brightness.dark;
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        const int maxVisible = 3;
+        const double spacing = 10;
+        final double itemWidth =
+            (constraints.maxWidth - (spacing * (maxVisible - 1))) / maxVisible;
+
+        final int count = languages.length;
+        final double contentWidth =
+            (count * itemWidth) + (count > 0 ? (count - 1) * spacing : 0);
+
+        final list = SizedBox(
+          height: 58,
+          child: ListView.separated(
+            scrollDirection: Axis.horizontal,
+            physics: count > maxVisible
+                ? const BouncingScrollPhysics()
+                : const NeverScrollableScrollPhysics(),
+            itemCount: count,
+            separatorBuilder: (_, __) => const SizedBox(width: spacing),
+            itemBuilder: (context, index) {
+              final code = languages[index];
+              return SizedBox(
+                width: itemWidth,
+                child: _LangButton(
+                  label: _labelFor(code),
+                  selected: code == active,
+                  dark: dark,
+                  onTap: () => onSelect(code),
+                ),
+              );
+            },
+          ),
+        );
+
+        if (count <= maxVisible) {
+          return Align(
+            alignment: Alignment.center,
+            child: ConstrainedBox(
+              constraints: BoxConstraints(maxWidth: contentWidth),
+              child: list,
+            ),
+          );
+        }
+
+        return list;
+      },
+    );
+  }
+}
+
+class _LangButton extends StatefulWidget {
+  final String label;
+  final bool selected;
+  final bool dark;
+  final VoidCallback onTap;
+
+  const _LangButton({
+    required this.label,
+    required this.selected,
+    required this.dark,
+    required this.onTap,
+  });
+
+  @override
+  State<_LangButton> createState() => _LangButtonState();
+}
+
+class _LangButtonState extends State<_LangButton>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller;
+  bool _pressed = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(vsync: this);
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  void _playPress() {
+    _controller.forward(from: 0);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final fg = widget.dark ? Colors.white : Colors.white;
+    final textStyle = TextStyle(
+      fontSize: 15,
+      fontWeight: widget.selected ? FontWeight.w800 : FontWeight.w700,
+      color: fg,
+    );
+
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTapDown: (_) {
+        setState(() => _pressed = true);
+        _playPress();
+      },
+      onTapUp: (_) {
+        setState(() => _pressed = false);
+      },
+      onTapCancel: () {
+        setState(() => _pressed = false);
+        _controller.stop();
+      },
+      onTap: () {
+        _playPress();
+        widget.onTap();
+      },
+      child: Opacity(
+        opacity: (widget.selected || _pressed) ? 1.0 : 0.78,
+        child: Stack(
+          alignment: Alignment.center,
+          children: [
+            ClipRRect(
+              borderRadius: BorderRadius.circular(20),
+              child: SizedBox.expand(
+                child: Lottie.asset(
+                  'assets/lottie/language_button_pressing.json',
+                  controller: _controller,
+                  repeat: false,
+                  fit: BoxFit.fill,
+                  onLoaded: (composition) {
+                    _controller.duration = composition.duration;
+                    if (_controller.value == 0) {
+                      _controller.value = 0;
+                    }
+                  },
                 ),
               ),
-              const SizedBox(height: 12),
-              ...langCategories.map((c) {
-                final label = c['label']!;
-                final key = c['key']!;
-                return _CategoryCard(
-                  title: label,
-                  categoryKey: key,
-                  langCode: langCode, // ✨ NEW
-                  coverFuture: _getCategoryCover(langCode, key),
-                  onTap: () {
-                    _openViewAll(
-                      title: label,
-                      base: _qCategory(category: key, language: langCode),
-                      orderByField: 'createdAt',
-                    );
-                  },
-                  dark: dark,
-                  card: card,
-                  onBg: onBg,
-                );
-              }),
-            ];
-          }).toList(),
-        ],
+            ),
+            if (widget.selected || _pressed)
+              Positioned.fill(
+                child: IgnorePointer(
+                  child: DecoratedBox(
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(20),
+                      color: Colors.blue.withOpacity(_pressed ? 0.45 : 0.28),
+                    ),
+                  ),
+                ),
+              ),
+            Positioned.fill(
+              child: IgnorePointer(
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(
+                      color: (widget.selected || _pressed)
+                          ? Colors.blue.withOpacity(0.85)
+                          : Colors.white.withOpacity(0.28),
+                      width: (widget.selected || _pressed) ? 1.6 : 1.1,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 12),
+              child: Text(
+                widget.label.toUpperCase(),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: textStyle,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

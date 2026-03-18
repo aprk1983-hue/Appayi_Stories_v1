@@ -6,6 +6,7 @@ import 'package:audio_story_app/services/subscription.dart';
 import 'package:audio_story_app/widgets/LOCK.dart';
 import 'package:audio_story_app/widgets/premium_subscribe_dialog_no_use.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:lottie/lottie.dart';
@@ -13,6 +14,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:audio_story_app/services/device_limit_service.dart';
 import 'package:audio_story_app/services/device_id_service.dart';
+import 'package:audio_story_app/services/device_info_service.dart';
 import 'package:audio_story_app/main.dart' show AuthGate;
 
 import 'package:firebase_storage/firebase_storage.dart';
@@ -203,8 +205,23 @@ class _HomeScreenState extends State<HomeScreen>
     final deviceId = await DeviceIdService.getOrCreate();
     _deviceId = deviceId;
 
-    // Heartbeat so the device list stays fresh.
-    await svc.touchLastSeen(uid: user.uid, deviceId: deviceId);
+    final info = await DeviceInfoService.buildFirestoreInfo();
+    final platform = kIsWeb
+        ? 'web'
+        : (Platform.isAndroid
+            ? 'android'
+            : (Platform.isIOS ? 'ios' : 'other'));
+
+    // Ensure this device exists as an active session before the watcher starts.
+    // This avoids creating a partial device doc that is missing `active: true`.
+    await svc.registerThisDevice(
+      uid: user.uid,
+      deviceId: deviceId,
+      info: {
+        ...info,
+        'platform': platform,
+      },
+    );
 
     await _deviceWatchSub?.cancel();
     _deviceWatchSub = svc

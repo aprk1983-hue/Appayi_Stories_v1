@@ -100,7 +100,7 @@ class DeviceLimitService {
     return all.take(max).toList();
   }
 
-  /// If user reinstalls, deviceId changes, but hardwareId may remain similar.
+  
   /// Deactivates any active sessions with the same [hardwareId], except [keepDeviceId] if provided.
   Future<void> deactivateByHardwareId({
     required String uid,
@@ -147,7 +147,11 @@ class DeviceLimitService {
     required String uid,
     required String deviceId,
   }) async {
-    await _devicesRef(uid).doc(deviceId).set({
+    final ref = _devicesRef(uid).doc(deviceId);
+    final snap = await ref.get();
+    if (!snap.exists) return;
+
+    await ref.set({
       'lastSeen': FieldValue.serverTimestamp(),
     }, SetOptions(merge: true));
   }

@@ -50,7 +50,7 @@ class LanguageData {
       //{'label': 'जंगल', 'key': 'Forest'},
     ],
     'ta': [
-      {'label': 'படுக்கை நேரக் கதைகள்', 'key': 'Bedtime'},
+      //{'label': 'படுக்கை நேரக் கதைகள்', 'key': 'Bedtime'},
       {'label': 'நாட்டுப்புறக் கதைகள்', 'key': 'Folk Tales/Fables'},
       {'label': 'சாகசங்கள்', 'key': 'Adventure'},
       //{'label': 'அறிவியல் & சுற்றுச்சூழல்', 'key': 'Science & Environmental Studies'},

@@ -2,7 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 
 /// Represents a single item in a story's script timeline.
 ///
-/// Supported types are typically: "audio", "text", "pause" (your app can decide).
+
 class StoryScriptItem {
   final String type;
   final String? audioUrl;

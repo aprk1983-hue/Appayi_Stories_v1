@@ -65,25 +65,6 @@ void _warmUpNextScreens(BuildContext context) {
   }
 }
 
-Future<void> initRevenueCat() async {
-  await Purchases.setLogLevel(LogLevel.debug);
-
-  const apiKey = "goog_hDJJIjRdZpkNoEMOMsGsYukoQMW";
-
-  final config = PurchasesConfiguration(apiKey);
-
-  await Purchases.configure(config); // ✅ FIRST configure
-
-  final user = FirebaseAuth.instance.currentUser;
-  if (user != null) {
-    await Purchases.logIn(user.uid); // ✅ THEN login
-  }
-
-  await Purchases.setAttributes({
-    'platform': 'Flutter',
-  });
-}
-
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
@@ -106,64 +87,6 @@ void main() async {
   runApp(const MyApp());
 }
 
-// class MyApp extends StatefulWidget {
-//   const MyApp({super.key});
-
-//   @override
-//   State<MyApp> createState() => _MyAppState();
-// }
-
-// class _MyAppState extends State<MyApp> {
-//   final GlobalKey<NavigatorState> _navKey = GlobalKey<NavigatorState>();
-//   StreamSubscription<bool>? _notifClickSub;
-
-//   @override
-//   void initState() {
-//     super.initState();
-// // When the user taps the media notification, go to HOME (root) and keep playing.
-//     _notifClickSub = AudioService.notificationClicked.listen((clicked) {
-//       if (!clicked) return;
-//       _navKey.currentState?.popUntil((r) => r.isFirst);
-//     });
-//   }
-
-//   @override
-//   void dispose() {
-//     _notifClickSub?.cancel();
-//     super.dispose();
-//   }
-
-//   @override
-//   Widget build(BuildContext context) {
-//     return AnimatedBuilder(
-//       animation: ThemeController.instance,
-//       builder: (context, _) {
-//         return Container(
-//           color: Colors.black,
-//           child: MaterialApp(
-//             navigatorKey: _navKey,
-//             navigatorObservers: [appRouteObserver],
-//             title: 'Kiko Stories',
-//             debugShowCheckedModeBanner: false,
-//             theme: AppTheme.lightTheme,
-//             darkTheme: AppTheme.darkTheme,
-//             themeMode: ThemeController.instance.materialMode,
-//             builder: (context, child) {
-//               return AppBackground(
-//                 animated: true,
-//                 child: child ?? const SizedBox.shrink(),
-//               );
-//             },
-//             // home: const _AppLifecycle(child: IntroSplashScreen()),
-//             home: const _AppLifecycle(
-//                 child:
-//                     RevenueCatSplashScreen()), // Changed from IntroSplashScreen
-//           ),
-//         );
-//       },
-//     );
-//   }
-// }
 class MyApp extends StatefulWidget {
   const MyApp({super.key});
 
@@ -328,31 +251,14 @@ class _AppLifecycleState extends State<_AppLifecycle>
   Widget build(BuildContext context) => widget.child;
 }
 
+// lib/main.dart - Updated AuthGate
 class AuthGate extends StatelessWidget {
   const AuthGate({super.key});
 
-  // Single source of truth for subscription check
-  Future<bool> _checkSubscription() async {
-    try {
-      final customerInfo = await Purchases.getCustomerInfo();
-      // Check your specific entitlement
-      final hasPro = customerInfo
-              .entitlements.active["Appayi Bedtime Stories Pro"]?.isActive ??
-          false;
-
-      debugPrint("📱 Subscription check - Has Pro: $hasPro");
-      debugPrint(
-          "📱 Active entitlements: ${customerInfo.entitlements.active.keys}");
-
-      return hasPro;
-    } catch (e) {
-      debugPrint("❌ Subscription check error: $e");
-      return false;
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
+    final subscriptionProvider = Provider.of<SubscriptionProvider>(context);
+
     return StreamBuilder<User?>(
       stream: FirebaseAuth.instance.authStateChanges(),
       builder: (context, authSnap) {
@@ -408,20 +314,19 @@ class AuthGate extends StatelessWidget {
                   return const LanguageSelectionScreen();
                 }
 
-                // ALL prerequisites met - NOW check subscription
-                return FutureBuilder<bool>(
-                  future: _checkSubscription(),
-                  builder: (context, subSnap) {
-                    if (subSnap.connectionState == ConnectionState.waiting) {
-                      return const _Loading();
-                    }
+                // ALL prerequisites met - check access (paid OR trial)
+                if (subscriptionProvider.isLoading) {
+                  return const _Loading();
+                }
 
-                    // IS subscribed - go to main app
-                    debugPrint(
-                        "✅ Active subscription found, going to MainTabs");
-                    return const MainTabs();
-                  },
-                );
+                // Show paywall if trial expired and no subscription
+                if (subscriptionProvider.shouldShowPaywall) {
+                  return const PaywallView(); // Your paywall screen
+                }
+
+                // Has access (either paid or in trial) - go to main app
+                debugPrint("✅ User has access (paid or trial)");
+                return const MainTabs();
               },
             );
           },
@@ -430,6 +335,107 @@ class AuthGate extends StatelessWidget {
     );
   }
 }
+// class AuthGate extends StatelessWidget {
+//   const AuthGate({super.key});
+
+//   // Single source of truth for subscription check
+//   Future<bool> _checkSubscription() async {
+//     try {
+//       final customerInfo = await Purchases.getCustomerInfo();
+//       // Use "premium" - the actual entitlement ID from RevenueCat
+//       final hasPro =
+//           customerInfo.entitlements.active["premium"]?.isActive ?? false;
+
+//       debugPrint("📱 Subscription check - Has Pro: $hasPro");
+//       debugPrint(
+//           "📱 Active entitlements: ${customerInfo.entitlements.active.keys}");
+
+//       return hasPro;
+//     } catch (e) {
+//       debugPrint("❌ Subscription check error: $e");
+//       return false;
+//     }
+//   }
+
+//   @override
+//   Widget build(BuildContext context) {
+//     return StreamBuilder<User?>(
+//       stream: FirebaseAuth.instance.authStateChanges(),
+//       builder: (context, authSnap) {
+//         if (authSnap.connectionState == ConnectionState.waiting) {
+//           return const _Loading();
+//         }
+
+//         final user = authSnap.data;
+
+//         // Not logged in - go to onboarding
+//         if (user == null) {
+//           return const OnboardingCarouselScreen();
+//         }
+
+//         // Logged in - ensure RevenueCat is synced
+//         return FutureBuilder<LogInResult>(
+//           future: Purchases.logIn(user.uid),
+//           builder: (context, loginSnap) {
+//             if (loginSnap.connectionState == ConnectionState.waiting) {
+//               return const _Loading();
+//             }
+
+//             // Now check Firestore profile
+//             final userRef =
+//                 FirebaseFirestore.instance.collection('users').doc(user.uid);
+
+//             return StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
+//               stream: userRef.snapshots(),
+//               builder: (context, profSnap) {
+//                 if (profSnap.connectionState == ConnectionState.waiting) {
+//                   return const _Loading();
+//                 }
+
+//                 // No profile or profile incomplete
+//                 if (!profSnap.hasData || !(profSnap.data?.exists ?? false)) {
+//                   return const OnboardingScreen();
+//                 }
+
+//                 final data = profSnap.data!.data() ?? {};
+//                 final isProfileComplete = data['isProfileComplete'] == true;
+
+//                 if (!isProfileComplete) {
+//                   return const OnboardingScreen();
+//                 }
+
+//                 // Check languages
+//                 final List<String> languages =
+//                     (data['selectedLanguages'] is List)
+//                         ? List<String>.from(data['selectedLanguages'] as List)
+//                         : [];
+
+//                 if (languages.isEmpty) {
+//                   return const LanguageSelectionScreen();
+//                 }
+
+//                 // ALL prerequisites met - NOW check subscription
+//                 return FutureBuilder<bool>(
+//                   future: _checkSubscription(),
+//                   builder: (context, subSnap) {
+//                     if (subSnap.connectionState == ConnectionState.waiting) {
+//                       return const _Loading();
+//                     }
+
+//                     // IS subscribed - go to main app
+//                     debugPrint(
+//                         "✅ Active subscription found, going to MainTabs");
+//                     return const MainTabs();
+//                   },
+//                 );
+//               },
+//             );
+//           },
+//         );
+//       },
+//     );
+//   }
+// }
 
 class _Loading extends StatelessWidget {
   const _Loading();

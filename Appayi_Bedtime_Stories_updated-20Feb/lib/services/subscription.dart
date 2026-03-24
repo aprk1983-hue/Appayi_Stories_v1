@@ -22,6 +22,10 @@
 //   final _subscriptionStatusController = StreamController<bool>.broadcast();
 //   Stream<bool> get subscriptionStatus => _subscriptionStatusController.stream;
 
+//   // Current subscription status cache
+//   bool _hasActiveSubscription = false;
+//   bool get hasActiveSubscription => _hasActiveSubscription;
+
 //   Future<void> initialize() async {
 //     if (_isInitialized) return;
 
@@ -31,7 +35,7 @@
 //         if (user != null) {
 //           await _syncUserWithRevenueCat(user);
 //         } else {
-//           _subscriptionStatusController.add(false);
+//           _updateSubscriptionStatus(false);
 //         }
 //       });
 
@@ -45,21 +49,17 @@
 //     }
 //   }
 
-//   Future<void> updateSubscriptionInFirestore({
-//     required String userId,
-//     required CustomerInfo customerInfo,
-//   }) async {
-//     await _updateSubscriptionInFirestore(
-//       userId: userId,
-//       customerInfo: customerInfo,
-//     );
+//   void _updateSubscriptionStatus(bool hasActive) {
+//     if (_hasActiveSubscription != hasActive) {
+//       _hasActiveSubscription = hasActive;
+//       _subscriptionStatusController.add(hasActive);
+//     }
 //   }
 
-//   // This will be called whenever customer info updates
 //   Future<void> _onCustomerInfoUpdate(CustomerInfo customerInfo) async {
 //     final user = _auth.currentUser;
 //     if (user != null) {
-//       await _updateSubscriptionInFirestore(
+//       await updateSubscriptionInFirestore(
 //         userId: user.uid,
 //         customerInfo: customerInfo,
 //       );
@@ -70,8 +70,7 @@
 //     try {
 //       final logInResult = await Purchases.logIn(user.uid);
 
-//       // Update Firestore with subscription status
-//       await _updateSubscriptionInFirestore(
+//       await updateSubscriptionInFirestore(
 //         userId: user.uid,
 //         customerInfo: logInResult.customerInfo,
 //       );
@@ -82,18 +81,25 @@
 //     }
 //   }
 
-//   Future<void> _updateSubscriptionInFirestore({
+//   Future<void> updateSubscriptionInFirestore({
 //     required String userId,
 //     required CustomerInfo customerInfo,
 //   }) async {
 //     try {
-//       final hasActivePro =
-//           customerInfo.entitlements.active.containsKey(_entitlementId);
 //       final entitlement = customerInfo.entitlements.all[_entitlementId];
+//       final hasActivePro = entitlement?.isActive ?? false;
+
+//       // Check if the user is in trial
+//       final isTrial = entitlement != null &&
+//           entitlement.latestPurchaseDate != null &&
+//           entitlement.originalPurchaseDate != null &&
+//           entitlement.latestPurchaseDate == entitlement.originalPurchaseDate &&
+//           hasActivePro;
 
 //       final subscriptionData = {
 //         'userId': userId,
 //         'hasActiveSubscription': hasActivePro,
+//         'isTrial': isTrial,
 //         'entitlementId': _entitlementId,
 //         'isActive': hasActivePro,
 //         'expirationDate': entitlement?.expirationDate,
@@ -108,17 +114,19 @@
 //           .doc(userId)
 //           .set(subscriptionData, SetOptions(merge: true));
 
-//       // Add to user document as well for easy access
+//       // Update user doc
 //       await _firestore.collection('users').doc(userId).update({
 //         'subscription': {
 //           'hasActive': hasActivePro,
+//           'isTrial': isTrial,
 //           'lastUpdated': FieldValue.serverTimestamp(),
 //         }
 //       });
 
-//       _subscriptionStatusController.add(hasActivePro);
+//       _updateSubscriptionStatus(hasActivePro);
 
-//       debugPrint('📱 Subscription status updated in Firestore: $hasActivePro');
+//       debugPrint(
+//           '📱 Subscription status updated in Firestore: $hasActivePro, isTrial: $isTrial');
 //     } catch (e) {
 //       debugPrint('❌ Error updating Firestore subscription: $e');
 //     }
@@ -135,19 +143,21 @@
 //             await _firestore.collection(_collection).doc(user.uid).get();
 //         if (doc.exists) {
 //           final hasActive = doc.data()?['hasActiveSubscription'] ?? false;
+//           _updateSubscriptionStatus(hasActive);
 //           return hasActive;
 //         }
 //       }
 
 //       // Force refresh from RevenueCat
 //       final customerInfo = await Purchases.getCustomerInfo();
-//       await _updateSubscriptionInFirestore(
+//       await updateSubscriptionInFirestore(
 //         userId: user.uid,
 //         customerInfo: customerInfo,
 //       );
 
 //       final hasActive =
 //           customerInfo.entitlements.active.containsKey(_entitlementId);
+//       _updateSubscriptionStatus(hasActive);
 //       return hasActive;
 //     } catch (e) {
 //       debugPrint('❌ Error checking subscription: $e');
@@ -161,7 +171,7 @@
 //       final user = _auth.currentUser;
 
 //       if (user != null) {
-//         await _updateSubscriptionInFirestore(
+//         await updateSubscriptionInFirestore(
 //           userId: user.uid,
 //           customerInfo: customerInfo,
 //         );
@@ -177,11 +187,12 @@
 //   void dispose() {
 //     _authSubscription?.cancel();
 //     _subscriptionStatusController.close();
-//     // Note: We don't remove the customer info listener as it's a static function
 //   }
 // }
-// lib/services/subscription_service.dart
+
+// lib/services/subscription_service.dart (updated)
 import 'dart:async';
+import 'package:audio_story_app/services/trialService.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
@@ -197,6 +208,7 @@ class SubscriptionService {
 
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final FirebaseAuth _auth = FirebaseAuth.instance;
+  final TrialService _trialService = TrialService();
 
   StreamSubscription<User?>? _authSubscription;
   bool _isInitialized = false;
@@ -209,10 +221,29 @@ class SubscriptionService {
   bool _hasActiveSubscription = false;
   bool get hasActiveSubscription => _hasActiveSubscription;
 
+  // Check if user has access (either paid OR in trial)
+  Future<bool> hasAccess() async {
+    final hasPaid = _hasActiveSubscription;
+    final isInTrial = await _trialService.isTrialEligible;
+
+    return hasPaid || isInTrial;
+  }
+
+  // Check if user should see paywall (trial expired AND no subscription)
+  Future<bool> shouldShowPaywall() async {
+    final hasPaid = _hasActiveSubscription;
+    final isTrialExpired = await _trialService.isTrialExpired;
+
+    return !hasPaid && isTrialExpired;
+  }
+
   Future<void> initialize() async {
     if (_isInitialized) return;
 
     try {
+      // Initialize trial service
+      await _trialService.initialize();
+
       // Listen to auth changes
       _authSubscription = _auth.authStateChanges().listen((User? user) async {
         if (user != null) {
@@ -227,6 +258,8 @@ class SubscriptionService {
 
       _isInitialized = true;
       debugPrint('✅ SubscriptionService initialized');
+      debugPrint(
+          '🎯 Trial status: eligible=${_trialService.isTrialEligible}, expired=${_trialService.isTrialExpired}');
     } catch (e) {
       debugPrint('❌ SubscriptionService initialization error: $e');
     }
@@ -269,13 +302,26 @@ class SubscriptionService {
     required CustomerInfo customerInfo,
   }) async {
     try {
-      final hasActivePro =
-          customerInfo.entitlements.active.containsKey(_entitlementId);
       final entitlement = customerInfo.entitlements.all[_entitlementId];
+      final hasActivePro = entitlement?.isActive ?? false;
+
+      // Get trial status
+      final isInTrial = await _trialService.isTrialEligible;
+      final remainingTrialDays = await _trialService.getRemainingTrialDays();
+
+      // Check if the user is in RevenueCat trial
+      final isRevenueCatTrial = entitlement != null &&
+          entitlement.latestPurchaseDate != null &&
+          entitlement.originalPurchaseDate != null &&
+          entitlement.latestPurchaseDate == entitlement.originalPurchaseDate &&
+          hasActivePro;
 
       final subscriptionData = {
         'userId': userId,
         'hasActiveSubscription': hasActivePro,
+        'isInTrial': isInTrial,
+        'remainingTrialDays': remainingTrialDays,
+        'isRevenueCatTrial': isRevenueCatTrial,
         'entitlementId': _entitlementId,
         'isActive': hasActivePro,
         'expirationDate': entitlement?.expirationDate,
@@ -290,17 +336,20 @@ class SubscriptionService {
           .doc(userId)
           .set(subscriptionData, SetOptions(merge: true));
 
-      // Add to user document as well for easy access
+      // Update user doc
       await _firestore.collection('users').doc(userId).update({
         'subscription': {
           'hasActive': hasActivePro,
+          'isInTrial': isInTrial,
+          'remainingTrialDays': remainingTrialDays,
           'lastUpdated': FieldValue.serverTimestamp(),
         }
       });
 
       _updateSubscriptionStatus(hasActivePro);
 
-      debugPrint('📱 Subscription status updated in Firestore: $hasActivePro');
+      debugPrint(
+          '📱 Subscription status updated: hasActive=$hasActivePro, isInTrial=$isInTrial, remainingDays=$remainingTrialDays');
     } catch (e) {
       debugPrint('❌ Error updating Firestore subscription: $e');
     }
@@ -361,5 +410,6 @@ class SubscriptionService {
   void dispose() {
     _authSubscription?.cancel();
     _subscriptionStatusController.close();
+    _trialService.dispose();
   }
 }

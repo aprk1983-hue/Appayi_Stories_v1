@@ -5,8 +5,10 @@ import 'dart:io';
 import 'package:audio_story_app/services/subscription.dart';
 import 'package:audio_story_app/widgets/LOCK.dart';
 import 'package:audio_story_app/widgets/premium_subscribe_dialog_no_use.dart';
+import 'package:audio_story_app/widgets/premium_subscribe_dialog_v1.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:purchases_flutter/purchases_flutter.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:lottie/lottie.dart';
@@ -193,8 +195,33 @@ class _HomeScreenState extends State<HomeScreen>
       });
     });
 
+    _initSubscriptionService();
     _initDeepLinks();
     _startDeviceWatch();
+  }
+
+  late final SubscriptionService _subscriptionService;
+  bool _hasActiveSubscription = false;
+
+  Future<void> _initSubscriptionService() async {
+    _subscriptionService = SubscriptionService();
+    await _subscriptionService.initialize();
+
+    // Initial check
+    final hasSubscription =
+        await _subscriptionService.checkSubscriptionStatus();
+    if (!mounted) return;
+    setState(() {
+      _hasActiveSubscription = hasSubscription;
+    });
+
+    // Listen to subscription changes (e.g., trial started, subscription purchased)
+    _subscriptionService.subscriptionStatus.listen((hasSubscription) {
+      if (!mounted) return;
+      setState(() {
+        _hasActiveSubscription = hasSubscription;
+      });
+    });
   }
 
   Future<void> _startDeviceWatch() async {
@@ -208,9 +235,7 @@ class _HomeScreenState extends State<HomeScreen>
     final info = await DeviceInfoService.buildFirestoreInfo();
     final platform = kIsWeb
         ? 'web'
-        : (Platform.isAndroid
-            ? 'android'
-            : (Platform.isIOS ? 'ios' : 'other'));
+        : (Platform.isAndroid ? 'android' : (Platform.isIOS ? 'ios' : 'other'));
 
     // Ensure this device exists as an active session before the watcher starts.
     // This avoids creating a partial device doc that is missing `active: true`.
@@ -643,52 +668,6 @@ class _HomeScreenState extends State<HomeScreen>
     );
   }
 
-// Add this method to your _HomeScreenState class
-  void _showSubscribeDialog(BuildContext context) {
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (ctx) => AlertDialog(
-        title: const Text(
-          '✨ Premium Content',
-          style: TextStyle(fontWeight: FontWeight.bold),
-        ),
-        content: const Text(
-            'This section requires a subscription. Subscribe now to access all stories and features!'),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(20),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text(
-              'NOT NOW',
-              style: TextStyle(color: Colors.grey),
-            ),
-          ),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFFFF9800),
-              foregroundColor: Colors.white,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(30),
-              ),
-            ),
-            onPressed: () {
-              Navigator.pop(ctx);
-              // Navigate to your paywall screen
-              Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                      builder: (context) => RevenueCatSplashScreen()));
-            },
-            child: const Text('SUBSCRIBE NOW'),
-          ),
-        ],
-      ),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     super.build(context);
@@ -839,7 +818,7 @@ class _HomeScreenState extends State<HomeScreen>
                       ),
                     ],
                   ),
-                  onPressed: () => _showSubscribeDialog(context),
+                  onPressed: () => showPremiumSubscribeDialog(context),
                 ),
 
           // Rewards button - LOCKED for non-subscribers
@@ -876,7 +855,7 @@ class _HomeScreenState extends State<HomeScreen>
                       ),
                     ],
                   ),
-                  onPressed: () => _showSubscribeDialog(context),
+                  onPressed: () => showPremiumSubscribeDialog(context),
                 ),
 
           const SizedBox(width: 8),
@@ -945,7 +924,7 @@ class _HomeScreenState extends State<HomeScreen>
                             stream: _cachedStream('whatsNew:$langCode',
                                 _qNewest(language: langCode).limit(10)))
                         : SubscriptionLock(
-                            onLockPressed: () => _showSubscribeDialog(
+                            onLockPressed: () => showPremiumSubscribeDialog(
                                 context), // Call the function, not just create widget
                             child: _WhatsNewRow(
                               stream: _cachedStream('whatsNew:$langCode',
@@ -968,7 +947,8 @@ class _HomeScreenState extends State<HomeScreen>
                                 orderByField: 'createdAt'),
                           )
                         : SubscriptionLock(
-                            onLockPressed: () => _showSubscribeDialog(context),
+                            onLockPressed: () =>
+                                showPremiumSubscribeDialog(context),
                             child: _CategorySectionCard(
                               categories: langCategories,
                               langCode: langCode,
@@ -1014,7 +994,7 @@ class _HomeScreenState extends State<HomeScreen>
                             0xFFFF9800), // Orange color for premium badge
                         onMore: () {
                           if (!hasSubscription) {
-                            _showSubscribeDialog(context);
+                            showPremiumSubscribeDialog(context);
                             return;
                           }
                           _openViewAll(
@@ -1032,7 +1012,7 @@ class _HomeScreenState extends State<HomeScreen>
                               )
                             : SubscriptionLock(
                                 onLockPressed: () =>
-                                    _showSubscribeDialog(context),
+                                    showPremiumSubscribeDialog(context),
                                 child: _HorizontalStories(
                                   stream: _cachedStream(
                                     'cat:$langCode:$key',

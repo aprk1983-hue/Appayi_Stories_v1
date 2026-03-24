@@ -4,11 +4,8 @@ import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:google_sign_in/google_sign_in.dart';
+import 'package:purchases_flutter/purchases_flutter.dart';
 
-/// Google Sign-In + Firestore profile bootstrap (web + mobile).
-/// Updated for google_sign_in 7.x API:
-/// - Uses GoogleSignIn.instance + initialize() + authenticate()
-/// - Uses idToken only (accessToken no longer provided on 7.x)
 class AuthService {
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final FirebaseFirestore _db = FirebaseFirestore.instance;
@@ -31,15 +28,12 @@ class AuthService {
           ..setCustomParameters({'prompt': 'select_account'});
         credential = await _auth.signInWithPopup(provider);
       } else {
-        // Mobile flow for google_sign_in 7.x
-        // Optionally pass clientId/serverClientId if you need them;
-        // for most Firebase setups defaults work as long as SHA certs are configured.
         await _gsi.initialize();
 
         // Interactive auth UI
-        final account = await _gsi.authenticate(scopeHint: const ['email', 'profile']);
+        final account =
+            await _gsi.authenticate(scopeHint: const ['email', 'profile']);
 
-        // v7.x returns only idToken via GoogleSignInAuthentication
         final tokenData = await account.authentication;
         final String? idToken = tokenData.idToken;
 
@@ -54,11 +48,13 @@ class AuthService {
 
       final user = credential.user;
       if (user != null) {
-        await _ensureUserDocument(user); // keep this so parental gates/settings work
+        await _ensureUserDocument(
+            user); // keep this so parental gates/settings work
       }
       return credential;
     } on FirebaseAuthException catch (e, st) {
-      developer.log('FirebaseAuthException: ${e.code} ${e.message}', stackTrace: st);
+      developer.log('FirebaseAuthException: ${e.code} ${e.message}',
+          stackTrace: st);
       return null;
     } catch (e, st) {
       developer.log('Unexpected sign-in error: $e', stackTrace: st);
@@ -73,6 +69,7 @@ class AuthService {
         await _gsi.signOut().catchError((_) {});
         await _gsi.disconnect().catchError((_) {});
       }
+      await Purchases.logOut();
       await _auth.signOut();
     } catch (e, st) {
       developer.log('Sign-out error: $e', stackTrace: st);

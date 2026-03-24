@@ -2,6 +2,7 @@
 import 'dart:io';
 import 'package:audio_story_app/main.dart';
 import 'package:audio_story_app/services/subscription.dart';
+import 'package:audio_story_app/services/trialService.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -130,6 +131,7 @@ class _RevenueCatSplashScreenState extends State<RevenueCatSplashScreen> {
     }
   }
 
+// lib/splash_screen.dart - Updated _verifyAndShowPaywall
   Future<void> _verifyAndShowPaywall() async {
     if (_paywallShown) {
       debugPrint("⚠️ Paywall already shown, skipping");
@@ -137,6 +139,21 @@ class _RevenueCatSplashScreenState extends State<RevenueCatSplashScreen> {
     }
 
     try {
+      // Check if trial is still active
+      final trialService = TrialService();
+      await trialService.initialize();
+      final isTrialEligible = await trialService.isTrialEligible;
+
+      if (isTrialEligible) {
+        // User is in trial period - don't show paywall
+        debugPrint("🎯 User is in trial period, skipping paywall");
+        _navigateToAuthGate();
+        return;
+      }
+
+      // Trial expired - show paywall
+      debugPrint("⏰ Trial expired, showing paywall");
+
       // Get offerings
       final offerings = await Purchases.getOfferings();
 
@@ -172,7 +189,7 @@ class _RevenueCatSplashScreenState extends State<RevenueCatSplashScreen> {
         // Wait a moment for RevenueCat to process
         await Future.delayed(const Duration(seconds: 2));
 
-        // 🔥 Check RevenueCat again after paywall and update Firestore
+        // Check RevenueCat again after paywall and update Firestore
         final user = FirebaseAuth.instance.currentUser;
         if (user != null) {
           final updatedInfo = await Purchases.getCustomerInfo();
@@ -201,6 +218,77 @@ class _RevenueCatSplashScreenState extends State<RevenueCatSplashScreen> {
       }
     }
   }
+  // Future<void> _verifyAndShowPaywall() async {
+  //   if (_paywallShown) {
+  //     debugPrint("⚠️ Paywall already shown, skipping");
+  //     return;
+  //   }
+
+  //   try {
+  //     // Get offerings
+  //     final offerings = await Purchases.getOfferings();
+
+  //     if (offerings.current == null) {
+  //       debugPrint("⚠️ No current offering available");
+  //       _navigateToAuthGate();
+  //       return;
+  //     }
+
+  //     if (offerings.current!.availablePackages.isEmpty) {
+  //       debugPrint("⚠️ Current offering has no packages");
+  //       _navigateToAuthGate();
+  //       return;
+  //     }
+
+  //     _paywallShown = true;
+
+  //     if (!mounted) return;
+
+  //     // Add a small delay to ensure UI is ready
+  //     await Future.delayed(const Duration(milliseconds: 500));
+
+  //     try {
+  //       // Show paywall
+  //       await RevenueCatUI.presentPaywallIfNeeded(
+  //         _entitlementId,
+  //         offering: offerings.current!,
+  //         displayCloseButton: true,
+  //       );
+
+  //       debugPrint("✅ Paywall dismissed");
+
+  //       // Wait a moment for RevenueCat to process
+  //       await Future.delayed(const Duration(seconds: 2));
+
+  //       // 🔥 Check RevenueCat again after paywall and update Firestore
+  //       final user = FirebaseAuth.instance.currentUser;
+  //       if (user != null) {
+  //         final updatedInfo = await Purchases.getCustomerInfo();
+  //         final nowHasPro =
+  //             updatedInfo.entitlements.active.containsKey(_entitlementId);
+
+  //         // Update Firestore with new status
+  //         await SubscriptionService().updateSubscriptionInFirestore(
+  //           userId: user.uid,
+  //           customerInfo: updatedInfo,
+  //         );
+
+  //         debugPrint("After paywall - has pro: $nowHasPro");
+  //       }
+  //     } catch (e) {
+  //       debugPrint("❌ Error showing paywall: $e");
+  //     } finally {
+  //       if (mounted && !_navigationInProgress) {
+  //         _navigateToAuthGate();
+  //       }
+  //     }
+  //   } catch (e) {
+  //     debugPrint("❌ Error in paywall verification: $e");
+  //     if (mounted) {
+  //       _navigateToAuthGate();
+  //     }
+  //   }
+  // }
 
   void _navigateToAuthGate() {
     if (_navigationInProgress || !mounted) return;

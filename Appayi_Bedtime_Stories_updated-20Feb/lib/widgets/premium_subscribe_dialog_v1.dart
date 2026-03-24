@@ -1,28 +1,51 @@
 // lib/widgets/premium_subscribe_dialog.dart
+import 'package:audio_story_app/paywall.dart';
+import 'package:audio_story_app/services/subscription.dart';
+import 'package:audio_story_app/services/trialService.dart';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:audio_story_app/services/paywall_service.dart';
 
 /// Use this helper anywhere:
 /// await showPremiumSubscribeDialog(context);
-Future<void> showPremiumSubscribeDialog(
+Future<bool?> showPremiumSubscribeDialog(
   BuildContext context, {
   Future<void> Function()? onSubscribe,
+  int? remainingTrialDays,
 }) async {
-  if (!context.mounted) return;
-  await showDialog<void>(
+  if (!context.mounted) return false;
+
+  // If remainingTrialDays is not provided, fetch it
+  int trialDays = remainingTrialDays ?? 0;
+  if (remainingTrialDays == null) {
+    try {
+      trialDays = await TrialService().getRemainingTrialDays();
+      debugPrint('📱 Fetched remaining trial days: $trialDays');
+    } catch (e) {
+      debugPrint('Error getting trial days: $e');
+      trialDays = 0;
+    }
+  }
+
+  return showDialog<bool>(
     context: context,
     barrierDismissible: true,
     useRootNavigator: true,
-    builder: (_) => PremiumSubscribeDialog(onSubscribe: onSubscribe),
+    builder: (_) => PremiumSubscribeDialog(
+      onSubscribe: onSubscribe,
+      remainingTrialDays: trialDays,
+    ),
   );
 }
 
-/// Also provides a Widget for code that expects:
-/// `builder: (_) => const PremiumSubscribeDialog()`
 class PremiumSubscribeDialog extends StatefulWidget {
   final Future<void> Function()? onSubscribe;
-  const PremiumSubscribeDialog({super.key, this.onSubscribe});
+  final int remainingTrialDays;
+
+  const PremiumSubscribeDialog({
+    super.key,
+    this.onSubscribe,
+    this.remainingTrialDays = 0,
+  });
 
   @override
   State<PremiumSubscribeDialog> createState() => _PremiumSubscribeDialogState();
@@ -31,6 +54,7 @@ class PremiumSubscribeDialog extends StatefulWidget {
 class _PremiumSubscribeDialogState extends State<PremiumSubscribeDialog> {
   _Cfg cfg = _Cfg.defaults();
   bool loaded = false;
+  bool _isSubscribing = false;
 
   @override
   void initState() {
@@ -61,6 +85,76 @@ class _PremiumSubscribeDialogState extends State<PremiumSubscribeDialog> {
     if (mounted) setState(() => loaded = true);
   }
 
+  String _getMessage() {
+    debugPrint(
+        '📱 Dialog - Remaining trial days: ${widget.remainingTrialDays}');
+
+    if (widget.remainingTrialDays > 0) {
+      return 'You have ${widget.remainingTrialDays} day${widget.remainingTrialDays > 1 ? 's' : ''} left in your free trial. Subscribe now to continue enjoying premium features!';
+    } else if (widget.remainingTrialDays == 0) {
+      return 'Your free trial has ended. Subscribe to unlock all stories, remove limits, and enable offline downloads.';
+    }
+    return cfg.message!;
+  }
+
+  String _getTitle() {
+    if (widget.remainingTrialDays > 0) {
+      return 'Trial Ending Soon';
+    } else if (widget.remainingTrialDays == 0) {
+      return 'Trial Expired';
+    }
+    return cfg.title!;
+  }
+
+  Future<void> _handleSubscribe() async {
+    if (_isSubscribing) return;
+
+    setState(() => _isSubscribing = true);
+
+    try {
+      // Close the dialog first
+      Navigator.of(context).pop(false);
+
+      // Navigate to RevenueCat paywall
+      final result = await Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => const RevenueCatSplashScreen(),
+        ),
+      );
+
+      // After paywall is dismissed, check if subscription was successful
+      final hasAccess = await SubscriptionService().hasAccess();
+      final remainingDays = await TrialService().getRemainingTrialDays();
+
+      debugPrint(
+          '📱 After paywall - Has access: $hasAccess, Remaining days: $remainingDays');
+
+      if (hasAccess && mounted) {
+        // Subscription successful
+        Navigator.of(context).pop(true);
+      } else if (mounted) {
+        // Subscription failed or was cancelled
+        Navigator.of(context).pop(false);
+      }
+    } catch (e) {
+      debugPrint('Error during subscription: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Something went wrong. Please try again.'),
+            backgroundColor: Colors.red,
+          ),
+        );
+        Navigator.of(context).pop(false);
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isSubscribing = false);
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext ctx) {
     final theme = Theme.of(ctx);
@@ -69,6 +163,21 @@ class _PremiumSubscribeDialogState extends State<PremiumSubscribeDialog> {
     final card = theme.brightness == Brightness.dark
         ? const Color(0xFF121212)
         : Colors.white;
+
+    // Determine the icon and color based on trial status
+    IconData mainIcon;
+    Color iconColor;
+
+    if (widget.remainingTrialDays > 0) {
+      mainIcon = Icons.timer;
+      iconColor = Colors.green;
+    } else if (widget.remainingTrialDays == 0) {
+      mainIcon = Icons.lock;
+      iconColor = Colors.red;
+    } else {
+      mainIcon = Icons.workspace_premium;
+      iconColor = Colors.orange;
+    }
 
     return Dialog(
       insetPadding: const EdgeInsets.symmetric(horizontal: 18, vertical: 18),
@@ -90,45 +199,147 @@ class _PremiumSubscribeDialogState extends State<PremiumSubscribeDialog> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
+              // Image section
               if (cfg.imageUrl != null && cfg.imageUrl!.trim().isNotEmpty)
                 AspectRatio(
                   aspectRatio: 16 / 9,
-                  child: Image.network(
-                    cfg.imageUrl!,
-                    fit: BoxFit.cover,
-                    errorBuilder: (_, __, ___) => Container(
-                      alignment: Alignment.center,
-                      color: theme.colorScheme.surfaceVariant.withOpacity(0.25),
-                      child: Icon(Icons.workspace_premium,
-                          size: 48, color: onBg.withOpacity(0.65)),
-                    ),
+                  child: Stack(
+                    children: [
+                      Image.network(
+                        cfg.imageUrl!,
+                        fit: BoxFit.cover,
+                        errorBuilder: (_, __, ___) => Container(
+                          alignment: Alignment.center,
+                          color: theme.colorScheme.surfaceVariant
+                              .withOpacity(0.25),
+                          child: Icon(mainIcon, size: 48, color: iconColor),
+                        ),
+                      ),
+                      // Trial badge overlay
+                      if (widget.remainingTrialDays > 0)
+                        Positioned(
+                          top: 12,
+                          right: 12,
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 12,
+                              vertical: 6,
+                            ),
+                            decoration: BoxDecoration(
+                              color: Colors.green.shade600,
+                              borderRadius: BorderRadius.circular(20),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withOpacity(0.2),
+                                  blurRadius: 4,
+                                  offset: const Offset(0, 2),
+                                ),
+                              ],
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                const Icon(
+                                  Icons.timer,
+                                  size: 16,
+                                  color: Colors.white,
+                                ),
+                                const SizedBox(width: 4),
+                                Text(
+                                  '${widget.remainingTrialDays} day${widget.remainingTrialDays > 1 ? 's' : ''} left',
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      // Expired badge
+                      if (widget.remainingTrialDays == 0)
+                        Positioned(
+                          top: 12,
+                          right: 12,
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 12,
+                              vertical: 6,
+                            ),
+                            decoration: BoxDecoration(
+                              color: Colors.red.shade600,
+                              borderRadius: BorderRadius.circular(20),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withOpacity(0.2),
+                                  blurRadius: 4,
+                                  offset: const Offset(0, 2),
+                                ),
+                              ],
+                            ),
+                            child: const Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(
+                                  Icons.lock,
+                                  size: 16,
+                                  color: Colors.white,
+                                ),
+                                SizedBox(width: 4),
+                                Text(
+                                  'Expired',
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                    ],
                   ),
                 )
               else
                 Container(
                   padding: const EdgeInsets.symmetric(vertical: 18),
                   alignment: Alignment.center,
-                  child: Icon(Icons.workspace_premium,
-                      size: 48, color: Colors.orange),
+                  child: Icon(
+                    mainIcon,
+                    size: 48,
+                    color: iconColor,
+                  ),
                 ),
+
+              // Title
               Padding(
                 padding: const EdgeInsets.fromLTRB(18, 10, 18, 4),
                 child: Text(
-                  cfg.title!,
+                  _getTitle(),
                   textAlign: TextAlign.center,
-                  style: theme.textTheme.titleLarge
-                      ?.copyWith(fontWeight: FontWeight.w800, color: onBg),
+                  style: theme.textTheme.titleLarge?.copyWith(
+                    fontWeight: FontWeight.w800,
+                    color: onBg,
+                  ),
                 ),
               ),
+
+              // Message
               Padding(
                 padding: const EdgeInsets.fromLTRB(18, 8, 18, 10),
                 child: Text(
-                  cfg.message!,
+                  _getMessage(),
                   textAlign: TextAlign.center,
-                  style: theme.textTheme.bodyMedium
-                      ?.copyWith(color: onBg.withOpacity(0.75), height: 1.35),
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    color: onBg.withOpacity(0.75),
+                    height: 1.35,
+                  ),
                 ),
               ),
+
+              // Loading indicator
               if (!loaded)
                 Padding(
                   padding: const EdgeInsets.only(bottom: 10),
@@ -141,6 +352,8 @@ class _PremiumSubscribeDialogState extends State<PremiumSubscribeDialog> {
                     ),
                   ),
                 ),
+
+              // Buttons
               Padding(
                 padding: const EdgeInsets.fromLTRB(18, 0, 18, 18),
                 child: Row(
@@ -148,7 +361,9 @@ class _PremiumSubscribeDialogState extends State<PremiumSubscribeDialog> {
                     if (cfg.showSecondaryButton == true) ...[
                       Expanded(
                         child: OutlinedButton(
-                          onPressed: () => Navigator.of(ctx).pop(),
+                          onPressed: _isSubscribing
+                              ? null
+                              : () => Navigator.of(ctx).pop(false),
                           style: OutlinedButton.styleFrom(
                             foregroundColor: Colors.orange,
                             side: const BorderSide(color: Colors.orange),
@@ -163,14 +378,7 @@ class _PremiumSubscribeDialogState extends State<PremiumSubscribeDialog> {
                     ],
                     Expanded(
                       child: ElevatedButton(
-                        onPressed: () async {
-                          Navigator.of(ctx).pop();
-                          if (widget.onSubscribe != null) {
-                            await widget.onSubscribe!();
-                          } else {
-                            await PaywallService.open(ctx);
-                          }
-                        },
+                        onPressed: _isSubscribing ? null : _handleSubscribe,
                         style: ElevatedButton.styleFrom(
                           backgroundColor: Colors.orange,
                           foregroundColor: Colors.white,
@@ -178,12 +386,34 @@ class _PremiumSubscribeDialogState extends State<PremiumSubscribeDialog> {
                           shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(14)),
                         ),
-                        child: Text(cfg.primaryButtonText!),
+                        child: _isSubscribing
+                            ? const SizedBox(
+                                height: 20,
+                                width: 20,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  color: Colors.white,
+                                ),
+                              )
+                            : Text(cfg.primaryButtonText!),
                       ),
                     ),
                   ],
                 ),
               ),
+
+              // Trial info footer (only show if trial is active)
+              if (widget.remainingTrialDays > 0)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 16),
+                  child: Text(
+                    'Cancel anytime • No commitment',
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: onBg.withOpacity(0.5),
+                      fontSize: 11,
+                    ),
+                  ),
+                ),
             ],
           ),
         ),

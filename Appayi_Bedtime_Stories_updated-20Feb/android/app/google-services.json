@@ -30,6 +30,14 @@
           }
         },
         {
+          "client_id": "889447214349-jjesqfejqiqm6jvsunru21qr6h3sauft.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.app.audiostoryapp",
+            "certificate_hash": "365c03ff965cd802340363597c4e947109df3321"
+          }
+        },
+        {
           "client_id": "889447214349-u280ieoeqjg8d1u85dqosoa8kilb7ms8.apps.googleusercontent.com",
           "client_type": 1,
           "android_info": {

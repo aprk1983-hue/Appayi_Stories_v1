@@ -70,4 +70,9 @@ class TrialService {
   void dispose() {
     _trialStatusController.close();
   }
+
+  Future<bool> isFirstLaunch() async {
+    final prefs = await SharedPreferences.getInstance();
+    return !prefs.containsKey(_trialInstallDateKey);
+  }
 }

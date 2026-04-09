@@ -10,7 +10,9 @@ import 'package:purchases_flutter/purchases_flutter.dart';
 import 'package:purchases_ui_flutter/purchases_ui_flutter.dart';
 
 class RevenueCatSplashScreen extends StatefulWidget {
-  const RevenueCatSplashScreen({super.key});
+  final bool
+      isShow; // If true, always show paywall; if false/null, check trial status
+  const RevenueCatSplashScreen({super.key, this.isShow = false});
 
   @override
   State<RevenueCatSplashScreen> createState() => _RevenueCatSplashScreenState();
@@ -65,7 +67,7 @@ class _RevenueCatSplashScreenState extends State<RevenueCatSplashScreen> {
 
         if (!mounted) return;
 
-        // 🔥 STEP 3: Make decision based on RevenueCat status
+        // 🔥 STEP 3: Make decision based on RevenueCat status and isShow flag
         if (hasActivePro) {
           debugPrint("✅ RevenueCat says user HAS active subscription");
           _navigateToAuthGate();
@@ -131,7 +133,6 @@ class _RevenueCatSplashScreenState extends State<RevenueCatSplashScreen> {
     }
   }
 
-// lib/splash_screen.dart - Updated _verifyAndShowPaywall
   Future<void> _verifyAndShowPaywall() async {
     if (_paywallShown) {
       debugPrint("⚠️ Paywall already shown, skipping");
@@ -139,22 +140,27 @@ class _RevenueCatSplashScreenState extends State<RevenueCatSplashScreen> {
     }
 
     try {
-      // Check if trial is still active
-      final trialService = TrialService();
-      await trialService.initialize();
-      final isTrialEligible = await trialService.isTrialEligible;
+      // Check if we should show paywall based on isShow flag
+      if (widget.isShow) {
+        // Force show paywall regardless of trial status
+        debugPrint("🔓 Force showing paywall (isShow=true)");
+      } else {
+        // Check trial status - only show paywall if trial expired
+        final trialService = TrialService();
+        await trialService.initialize();
+        final isTrialEligible = await trialService.isTrialEligible;
 
-      if (isTrialEligible) {
-        // User is in trial period - don't show paywall
-        debugPrint("🎯 User is in trial period, skipping paywall");
-        _navigateToAuthGate();
-        return;
+        if (isTrialEligible) {
+          // User is in trial period - don't show paywall
+          debugPrint("🎯 User is in trial period, skipping paywall");
+          _navigateToAuthGate();
+          return;
+        }
+
+        debugPrint("⏰ Trial expired, showing paywall");
       }
 
-      // Trial expired - show paywall
-      debugPrint("⏰ Trial expired, showing paywall");
-
-      // Get offerings
+      // Show paywall
       final offerings = await Purchases.getOfferings();
 
       if (offerings.current == null) {
@@ -218,77 +224,6 @@ class _RevenueCatSplashScreenState extends State<RevenueCatSplashScreen> {
       }
     }
   }
-  // Future<void> _verifyAndShowPaywall() async {
-  //   if (_paywallShown) {
-  //     debugPrint("⚠️ Paywall already shown, skipping");
-  //     return;
-  //   }
-
-  //   try {
-  //     // Get offerings
-  //     final offerings = await Purchases.getOfferings();
-
-  //     if (offerings.current == null) {
-  //       debugPrint("⚠️ No current offering available");
-  //       _navigateToAuthGate();
-  //       return;
-  //     }
-
-  //     if (offerings.current!.availablePackages.isEmpty) {
-  //       debugPrint("⚠️ Current offering has no packages");
-  //       _navigateToAuthGate();
-  //       return;
-  //     }
-
-  //     _paywallShown = true;
-
-  //     if (!mounted) return;
-
-  //     // Add a small delay to ensure UI is ready
-  //     await Future.delayed(const Duration(milliseconds: 500));
-
-  //     try {
-  //       // Show paywall
-  //       await RevenueCatUI.presentPaywallIfNeeded(
-  //         _entitlementId,
-  //         offering: offerings.current!,
-  //         displayCloseButton: true,
-  //       );
-
-  //       debugPrint("✅ Paywall dismissed");
-
-  //       // Wait a moment for RevenueCat to process
-  //       await Future.delayed(const Duration(seconds: 2));
-
-  //       // 🔥 Check RevenueCat again after paywall and update Firestore
-  //       final user = FirebaseAuth.instance.currentUser;
-  //       if (user != null) {
-  //         final updatedInfo = await Purchases.getCustomerInfo();
-  //         final nowHasPro =
-  //             updatedInfo.entitlements.active.containsKey(_entitlementId);
-
-  //         // Update Firestore with new status
-  //         await SubscriptionService().updateSubscriptionInFirestore(
-  //           userId: user.uid,
-  //           customerInfo: updatedInfo,
-  //         );
-
-  //         debugPrint("After paywall - has pro: $nowHasPro");
-  //       }
-  //     } catch (e) {
-  //       debugPrint("❌ Error showing paywall: $e");
-  //     } finally {
-  //       if (mounted && !_navigationInProgress) {
-  //         _navigateToAuthGate();
-  //       }
-  //     }
-  //   } catch (e) {
-  //     debugPrint("❌ Error in paywall verification: $e");
-  //     if (mounted) {
-  //       _navigateToAuthGate();
-  //     }
-  //   }
-  // }
 
   void _navigateToAuthGate() {
     if (_navigationInProgress || !mounted) return;

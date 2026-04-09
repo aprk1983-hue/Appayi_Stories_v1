@@ -3,12 +3,12 @@ import 'dart:async';
 import 'dart:io';
 // Subscription gating removed: all stories are available for everyone.
 import 'package:audio_story_app/services/subscription.dart';
+import 'package:audio_story_app/services/trialService.dart';
 import 'package:audio_story_app/widgets/LOCK.dart';
-import 'package:audio_story_app/widgets/premium_subscribe_dialog_no_use.dart';
+import 'package:audio_story_app/widgets/Trial_popup.dart';
 import 'package:audio_story_app/widgets/premium_subscribe_dialog_v1.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
-import 'package:purchases_flutter/purchases_flutter.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:lottie/lottie.dart';
@@ -200,28 +200,205 @@ class _HomeScreenState extends State<HomeScreen>
     _startDeviceWatch();
   }
 
+  final TrialService _trialService = TrialService();
   late final SubscriptionService _subscriptionService;
   bool _hasActiveSubscription = false;
+  bool _hasAccess = false;
+  bool _isTrial = false;
+  int _remainingTrialDays = 0;
 
+// Add this variable
+  bool _hasShownTrialPopup = false;
+
+  // Updated method to show trial popup - ONLY for trial users without subscription
+  Future<void> _showTrialPopupIfNeeded() async {
+    // Don't show if already shown in this session
+    if (_hasShownTrialPopup) return;
+
+    // CRITICAL: Check if user has active subscription FIRST
+    if (_hasActiveSubscription) {
+      debugPrint('✅ User has active subscription - skipping trial popup');
+      return;
+    }
+
+    // Get trial status (only for non-subscribers)
+    final isInTrial = await _trialService.isTrialEligible;
+    final remainingDays = await _trialService.getRemainingTrialDays();
+    final isExpired = await _trialService.isTrialExpired;
+
+    // Only show popup if:
+    // 1. User is NOT subscribed AND
+    // 2. User is in trial OR trial is expired
+    final shouldShowPopup = !_hasActiveSubscription && (isInTrial || isExpired);
+
+    if (!shouldShowPopup) return;
+
+    _hasShownTrialPopup = true;
+
+    // Wait a bit for UI to load
+    await Future.delayed(const Duration(milliseconds: 500));
+
+    if (!mounted) return;
+
+    await showDialog(
+      context: context,
+      barrierDismissible: true,
+      builder: (context) => TrialPopup(
+        remainingDays: remainingDays,
+        isExpired: isExpired,
+        onClose: () {
+          Navigator.pop(context);
+        },
+      ),
+    );
+  }
+
+  // Updated initialization method
   Future<void> _initSubscriptionService() async {
     _subscriptionService = SubscriptionService();
     await _subscriptionService.initialize();
 
     // Initial check
-    final hasSubscription =
-        await _subscriptionService.checkSubscriptionStatus();
+    final hasActiveSub = _subscriptionService.hasActiveSubscription;
+    final hasAccess = await _subscriptionService.hasAccess();
+    final remainingDays = await _trialService.getRemainingTrialDays();
+    final isInTrial = await _trialService.isTrialEligible;
+
     if (!mounted) return;
     setState(() {
-      _hasActiveSubscription = hasSubscription;
+      _hasActiveSubscription = hasActiveSub;
+      _hasAccess = hasAccess;
+      _isTrial = isInTrial && !hasActiveSub; // Only in trial if not subscribed
+      _remainingTrialDays = remainingDays;
     });
 
-    // Listen to subscription changes (e.g., trial started, subscription purchased)
-    _subscriptionService.subscriptionStatus.listen((hasSubscription) {
+    debugPrint('🎯 Subscription status:');
+    debugPrint('   Has Active Subscription: $_hasActiveSubscription');
+    debugPrint('   Has Access: $_hasAccess');
+    debugPrint('   Is In Trial: $_isTrial');
+    debugPrint('   Remaining Days: $_remainingTrialDays');
+
+    // Listen to subscription changes
+    _subscriptionService.subscriptionStatus.listen((hasSubscription) async {
       if (!mounted) return;
+
+      final hasActiveSub = _subscriptionService.hasActiveSubscription;
+      final hasAccess = await _subscriptionService.hasAccess();
+      final remainingDays = await _trialService.getRemainingTrialDays();
+      final isInTrial = await _trialService.isTrialEligible;
+
       setState(() {
-        _hasActiveSubscription = hasSubscription;
+        _hasActiveSubscription = hasActiveSub;
+        _hasAccess = hasAccess;
+        _isTrial =
+            isInTrial && !hasActiveSub; // Reset trial status if subscribed
+        _remainingTrialDays = remainingDays;
+        _hasShownTrialPopup = false; // Reset so we can show if needed
       });
+
+      debugPrint('🔄 Subscription status updated:');
+      debugPrint('   Has Active Subscription: $_hasActiveSubscription');
+      debugPrint('   Has Access: $_hasAccess');
+      debugPrint('   Is In Trial: $_isTrial');
     });
+
+    // Show trial popup after UI loads (only if not subscribed)
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _showTrialPopupIfNeeded();
+    });
+  }
+
+  // Update the app bar trial badge - only show for trial users without subscription
+  Widget _buildTrialBadge() {
+    // Only show if user is in trial AND not subscribed
+    if (_isTrial && _remainingTrialDays > 0 && !_hasActiveSubscription) {
+      return InkWell(
+        onTap: () async {
+          await showDialog(
+            context: context,
+            barrierDismissible: _isTrial,
+            builder: (context) => TrialPopup(
+              remainingDays: _remainingTrialDays,
+              isExpired: false,
+              onClose: () {
+                Navigator.pop(context);
+              },
+            ),
+          );
+        },
+        child: Container(
+          margin: const EdgeInsets.only(right: 8),
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+          decoration: BoxDecoration(
+            gradient: const LinearGradient(
+              colors: [Color(0xFFFF9800), Color(0xFFFF5722)],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+            borderRadius: BorderRadius.circular(20),
+            boxShadow: [
+              BoxShadow(
+                color: const Color(0xFFFF9800).withOpacity(0.3),
+                blurRadius: 8,
+                offset: const Offset(0, 2),
+              ),
+            ],
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(
+                Icons.timer,
+                size: 16,
+                color: Colors.white,
+              ),
+              const SizedBox(width: 4),
+              Text(
+                '$_remainingTrialDays day${_remainingTrialDays > 1 ? 's' : ''} left',
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 12,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    // Show subscription badge if user has active subscription
+    if (_hasActiveSubscription) {
+      return Container(
+        margin: const EdgeInsets.only(right: 8),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+        decoration: BoxDecoration(
+          color: Colors.green,
+          borderRadius: BorderRadius.circular(20),
+        ),
+        child: const Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              Icons.verified,
+              size: 16,
+              color: Colors.white,
+            ),
+            SizedBox(width: 4),
+            Text(
+              'PREMIUM',
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 12,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    return const SizedBox.shrink();
   }
 
   Future<void> _startDeviceWatch() async {
@@ -684,14 +861,27 @@ class _HomeScreenState extends State<HomeScreen>
 
     if (_userData.isNotEmpty) {
       final data = _userData;
+      debugPrint('📱 User data keys: ${data.keys}');
+      debugPrint('📱 Full user data: $data');
+
       final child = (data['child'] is Map) ? data['child'] as Map : null;
+      if (child != null) {
+        debugPrint('👶 Child data: $child');
+      }
+
       final nick = (child?['nickName'] ?? data['childNickname'])?.toString();
       final realName = (child?['name'] ?? data['childName'])?.toString();
+
+      debugPrint('📝 Nick: $nick, RealName: $realName');
+
       greetName = (nick != null && nick.trim().isNotEmpty)
           ? nick.trim()
           : (realName != null && realName.trim().isNotEmpty
               ? realName.split(' ').first
               : 'Friend');
+
+      debugPrint('👤 Final greetName: $greetName');
+
       avatarUrl = (child?['photoUrl'] ?? data['profileImageUrl'])?.toString();
       gender = (child?['gender'] ?? data['gender'] ?? '').toString();
     }
@@ -704,7 +894,7 @@ class _HomeScreenState extends State<HomeScreen>
     // Add subscription check
     final subscriptionService = SubscriptionService();
     final hasSubscription = subscriptionService.hasActiveSubscription;
-
+    final hasAccess = _hasAccess;
     return StaticBlueBackground(
         child: Scaffold(
       backgroundColor: Colors.transparent,
@@ -785,8 +975,66 @@ class _HomeScreenState extends State<HomeScreen>
           ],
         ),
         actions: [
+          if (_isTrial && _remainingTrialDays > 0)
+            InkWell(
+              onTap: () async {
+                // Show trial popup when tapped
+                await showDialog(
+                  context: context,
+                  barrierDismissible:
+                      _isTrial, // Dismissible during trial, not after expiry
+                  builder: (context) => TrialPopup(
+                    remainingDays: _remainingTrialDays,
+                    isExpired: !_isTrial && _remainingTrialDays == 0,
+                    onClose: () {
+                      Navigator.pop(context);
+                    },
+                  ),
+                );
+              },
+              child: Container(
+                margin: const EdgeInsets.only(right: 8),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                decoration: BoxDecoration(
+                  gradient: const LinearGradient(
+                    colors: [Color(0xFFFF9800), Color(0xFFFF5722)],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                  borderRadius: BorderRadius.circular(20),
+                  boxShadow: [
+                    BoxShadow(
+                      color: const Color(0xFFFF9800).withOpacity(0.3),
+                      blurRadius: 8,
+                      offset: const Offset(0, 2),
+                    ),
+                  ],
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(
+                      Icons.timer,
+                      size: 16,
+                      color: Colors.white,
+                    ),
+                    const SizedBox(width: 4),
+                    Text(
+                      '$_remainingTrialDays day${_remainingTrialDays > 1 ? 's' : ''} left',
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+
           // Downloads button - LOCKED for non-subscribers
-          hasSubscription
+          hasAccess
               ? IconButton(
                   tooltip: 'Downloads',
                   icon: Icon(Icons.download_for_offline_rounded, color: onBg),
@@ -822,7 +1070,7 @@ class _HomeScreenState extends State<HomeScreen>
                 ),
 
           // Rewards button - LOCKED for non-subscribers
-          hasSubscription
+          hasAccess
               ? IconButton(
                   tooltip: 'Rewards',
                   icon: _goldTrophyIcon(onBg),
@@ -919,7 +1167,7 @@ class _HomeScreenState extends State<HomeScreen>
                       ),
                     ),
                     // What's New section - LOCKED for non-subscribers
-                    hasSubscription
+                    hasAccess
                         ? _WhatsNewRow(
                             stream: _cachedStream('whatsNew:$langCode',
                                 _qNewest(language: langCode).limit(10)))
@@ -932,7 +1180,7 @@ class _HomeScreenState extends State<HomeScreen>
                             ),
                           ),
                     // Category section - LOCKED for non-subscribers
-                    hasSubscription
+                    hasAccess
                         ? _CategorySectionCard(
                             categories: langCategories,
                             langCode: langCode,
@@ -987,13 +1235,13 @@ class _HomeScreenState extends State<HomeScreen>
                       final key = c['key'] ?? '';
                       return _SectionCard(
                         title: label,
-                        badgeText: !hasSubscription
+                        badgeText: !hasAccess
                             ? 'PREMIUM'
                             : null, // Add badge for locked sections
                         badgeColor: const Color(
                             0xFFFF9800), // Orange color for premium badge
                         onMore: () {
-                          if (!hasSubscription) {
+                          if (!hasAccess) {
                             showPremiumSubscribeDialog(context);
                             return;
                           }
@@ -1002,7 +1250,7 @@ class _HomeScreenState extends State<HomeScreen>
                               base: _qNewest(category: key, language: langCode),
                               orderByField: 'createdAt');
                         },
-                        child: hasSubscription
+                        child: hasAccess
                             ? _HorizontalStories(
                                 stream: _cachedStream(
                                   'cat:$langCode:$key',
@@ -1038,8 +1286,6 @@ class _HomeScreenState extends State<HomeScreen>
     ));
   }
 }
-
-/* ===================== Layout blocks ===================== */
 
 class _LanguageHeaderDelegate extends SliverPersistentHeaderDelegate {
   final double height;
@@ -1185,6 +1431,7 @@ class _LangButtonState extends State<_LangButton>
   @override
   void initState() {
     super.initState();
+
     _controller = AnimationController(vsync: this);
     // Listen to subscription status changes
   }

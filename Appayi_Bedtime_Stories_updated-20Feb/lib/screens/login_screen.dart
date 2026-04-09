@@ -1,6 +1,9 @@
 import 'dart:async';
 import 'package:audio_story_app/services/app_audio_service.dart';
+import 'package:audio_story_app/services/subscription.dart';
+import 'package:audio_story_app/services/trialService.dart';
 import 'package:flutter/material.dart'; // <-- This is the import it can't find
+import 'package:purchases_flutter/purchases_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -62,6 +65,7 @@ class _LoginScreenState extends State<LoginScreen> {
     _pwdCtrl.dispose();
     super.dispose();
   }
+
   // -------------------- DEVICE LIMIT (max 2 devices) --------------------
   static const Color _vibrantBlue = Color(0xFF061B3A); // dark vibrant blue
   static const Color _accentOrange = Color(0xFFFF9800);
@@ -120,7 +124,9 @@ class _LoginScreenState extends State<LoginScreen> {
     // physical device (e.g., user uninstalled/reinstalled and got a new
     // per-install deviceId), automatically free the older session.
     if (currentHardwareId != null && currentHardwareId.isNotEmpty) {
-      final match = active.where((d) => (d.hardwareId ?? '').trim() == currentHardwareId).toList();
+      final match = active
+          .where((d) => (d.hardwareId ?? '').trim() == currentHardwareId)
+          .toList();
       if (match.isNotEmpty) {
         // Deactivate the old install session, then register current install.
         await svc.deactivateDevice(uid: uid, deviceId: match.first.deviceId);
@@ -157,9 +163,7 @@ class _LoginScreenState extends State<LoginScreen> {
     await svc.deactivateDevice(uid: uid, deviceId: selectedDeviceId);
     final platform = kIsWeb
         ? 'web'
-        : (Platform.isAndroid
-            ? 'android'
-            : (Platform.isIOS ? 'ios' : 'other'));
+        : (Platform.isAndroid ? 'android' : (Platform.isIOS ? 'ios' : 'other'));
     await svc.registerThisDevice(
       uid: uid,
       deviceId: deviceId,
@@ -198,7 +202,8 @@ class _LoginScreenState extends State<LoginScreen> {
       builder: (_) {
         return Dialog(
           backgroundColor: Colors.transparent,
-          insetPadding: const EdgeInsets.symmetric(horizontal: 18, vertical: 24),
+          insetPadding:
+              const EdgeInsets.symmetric(horizontal: 18, vertical: 24),
           child: Container(
             decoration: BoxDecoration(
               color: _vibrantBlue,
@@ -249,7 +254,9 @@ class _LoginScreenState extends State<LoginScreen> {
                         final d = devices[i];
                         final name = (d.deviceName?.trim().isNotEmpty == true)
                             ? d.deviceName!.trim()
-                            : (d.model?.trim().isNotEmpty == true ? d.model!.trim() : 'Device');
+                            : (d.model?.trim().isNotEmpty == true
+                                ? d.model!.trim()
+                                : 'Device');
                         final platform = (d.platform ?? '').toUpperCase();
                         final lastSeen = d.lastSeen == null
                             ? 'Last seen: unknown'
@@ -273,12 +280,14 @@ class _LoginScreenState extends State<LoginScreen> {
                                     color: Colors.white.withOpacity(0.08),
                                     borderRadius: BorderRadius.circular(12),
                                   ),
-                                  child: const Icon(Icons.devices, color: Colors.white70),
+                                  child: const Icon(Icons.devices,
+                                      color: Colors.white70),
                                 ),
                                 const SizedBox(width: 12),
                                 Expanded(
                                   child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
                                     children: [
                                       Text(
                                         name,
@@ -291,8 +300,12 @@ class _LoginScreenState extends State<LoginScreen> {
                                       ),
                                       const SizedBox(height: 4),
                                       Text(
-                                        [platform.isEmpty ? null : platform, lastSeen]
-                                            .where((e) => e != null && e!.isNotEmpty)
+                                        [
+                                          platform.isEmpty ? null : platform,
+                                          lastSeen
+                                        ]
+                                            .where((e) =>
+                                                e != null && e!.isNotEmpty)
                                             .join(' • '),
                                         style: const TextStyle(
                                           color: Colors.white60,
@@ -305,11 +318,13 @@ class _LoginScreenState extends State<LoginScreen> {
                                 ),
                                 const SizedBox(width: 10),
                                 Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                                  padding: const EdgeInsets.symmetric(
+                                      horizontal: 10, vertical: 8),
                                   decoration: BoxDecoration(
                                     color: _accentOrange.withOpacity(0.15),
                                     borderRadius: BorderRadius.circular(12),
-                                    border: Border.all(color: _accentOrange.withOpacity(0.6)),
+                                    border: Border.all(
+                                        color: _accentOrange.withOpacity(0.6)),
                                   ),
                                   child: const Text(
                                     'Log out',
@@ -336,7 +351,8 @@ class _LoginScreenState extends State<LoginScreen> {
                           onPressed: () => Navigator.pop(context, null),
                           style: OutlinedButton.styleFrom(
                             foregroundColor: Colors.white,
-                            side: BorderSide(color: Colors.white.withOpacity(0.35)),
+                            side: BorderSide(
+                                color: Colors.white.withOpacity(0.35)),
                             padding: const EdgeInsets.symmetric(vertical: 12),
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(12),
@@ -344,7 +360,9 @@ class _LoginScreenState extends State<LoginScreen> {
                           ),
                           child: const Text(
                             'Cancel',
-                            style: TextStyle(fontFamily: AppTheme.bodyFont, fontWeight: FontWeight.w700),
+                            style: TextStyle(
+                                fontFamily: AppTheme.bodyFont,
+                                fontWeight: FontWeight.w700),
                           ),
                         ),
                       ),
@@ -362,7 +380,20 @@ class _LoginScreenState extends State<LoginScreen> {
   String _formatTime(DateTime dt) {
     // Simple local format: 19 Feb, 10:45 PM
     final d = dt.toLocal();
-    const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+    const months = [
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'May',
+      'Jun',
+      'Jul',
+      'Aug',
+      'Sep',
+      'Oct',
+      'Nov',
+      'Dec'
+    ];
     final day = d.day.toString().padLeft(2, '0');
     final mon = months[d.month - 1];
     final hour24 = d.hour;
@@ -371,9 +402,6 @@ class _LoginScreenState extends State<LoginScreen> {
     final ampm = hour24 >= 12 ? 'PM' : 'AM';
     return '$day $mon, $hour12:$min $ampm';
   }
-
-
-  
 
   InputDecoration _darkInput(String label) {
     return InputDecoration(
@@ -405,7 +433,6 @@ class _LoginScreenState extends State<LoginScreen> {
     if (!_formKey.currentState!.validate()) return;
     setState(() => _isLoading = true);
     try {
-      // This is for existing users, so navigate to AuthGate
       final cred = await _auth.signInWithEmailAndPassword(
         email: _emailCtrl.text.trim(),
         password: _pwdCtrl.text,
@@ -419,6 +446,9 @@ class _LoginScreenState extends State<LoginScreen> {
 
       final ok = await _ensureDeviceSlot(user);
       if (!ok) return;
+
+      // Initialize subscription and trial services after login
+      await _initializeSubscriptionServices();
 
       if (mounted) {
         Navigator.of(context).pushAndRemoveUntil(
@@ -437,7 +467,6 @@ class _LoginScreenState extends State<LoginScreen> {
     if (_isLoading) return;
     setState(() => _isLoading = true);
 
-    // Assume _authService.signInWithGoogle() returns UserCredential?
     final cred = await _authService.signInWithGoogle();
 
     if (mounted) setState(() => _isLoading = false);
@@ -447,8 +476,9 @@ class _LoginScreenState extends State<LoginScreen> {
       return;
     }
 
-    // --- ADDED EXPLICIT NAVIGATION ---
-    // Check if the user is new (we have to assume 'cred' is UserCredential)
+    // Initialize subscription and trial services after Google login
+    await _initializeSubscriptionServices();
+
     final bool isNewUser = cred.additionalUserInfo?.isNewUser ?? false;
 
     if (mounted) {
@@ -467,6 +497,94 @@ class _LoginScreenState extends State<LoginScreen> {
       }
     }
   }
+
+  Future<void> _initializeSubscriptionServices() async {
+    try {
+      // Initialize subscription service
+      await SubscriptionService().initialize();
+      await TrialService().initialize();
+
+      // Sync with RevenueCat if user exists
+      final user = FirebaseAuth.instance.currentUser;
+      if (user != null) {
+        await Purchases.logIn(user.uid);
+        final customerInfo = await Purchases.getCustomerInfo();
+        await SubscriptionService().updateSubscriptionInFirestore(
+          userId: user.uid,
+          customerInfo: customerInfo,
+        );
+      }
+      debugPrint('✅ Subscription services initialized after login');
+    } catch (e) {
+      debugPrint('❌ Error initializing subscription services: $e');
+    }
+  }
+  // Future<void> _emailSignIn() async {
+  //   if (!_formKey.currentState!.validate()) return;
+  //   setState(() => _isLoading = true);
+  //   try {
+  //     // This is for existing users, so navigate to AuthGate
+  //     final cred = await _auth.signInWithEmailAndPassword(
+  //       email: _emailCtrl.text.trim(),
+  //       password: _pwdCtrl.text,
+  //     );
+
+  //     final user = cred.user;
+  //     if (user == null) {
+  //       _toast('Login failed. Please try again.');
+  //       return;
+  //     }
+
+  //     final ok = await _ensureDeviceSlot(user);
+  //     if (!ok) return;
+
+  //     if (mounted) {
+  //       Navigator.of(context).pushAndRemoveUntil(
+  //         MaterialPageRoute(builder: (_) => const AuthGate()),
+  //         (r) => false,
+  //       );
+  //     }
+  //   } on FirebaseAuthException catch (e) {
+  //     _toast(e.message ?? e.code);
+  //   } finally {
+  //     if (mounted) setState(() => _isLoading = false);
+  //   }
+  // }
+
+  // Future<void> _handleGoogle() async {
+  //   if (_isLoading) return;
+  //   setState(() => _isLoading = true);
+
+  //   // Assume _authService.signInWithGoogle() returns UserCredential?
+  //   final cred = await _authService.signInWithGoogle();
+
+  //   if (mounted) setState(() => _isLoading = false);
+
+  //   if (cred == null) {
+  //     _toast('Google Sign-In failed or cancelled.');
+  //     return;
+  //   }
+
+  //   // --- ADDED EXPLICIT NAVIGATION ---
+  //   // Check if the user is new (we have to assume 'cred' is UserCredential)
+  //   final bool isNewUser = cred.additionalUserInfo?.isNewUser ?? false;
+
+  //   if (mounted) {
+  //     if (isNewUser) {
+  //       // New user -> Go to Master Profile
+  //       Navigator.of(context).pushAndRemoveUntil(
+  //         MaterialPageRoute(builder: (_) => const MasterProfileScreen()),
+  //         (r) => false,
+  //       );
+  //     } else {
+  //       // Existing user -> Go to AuthGate
+  //       Navigator.of(context).pushAndRemoveUntil(
+  //         MaterialPageRoute(builder: (_) => const AuthGate()),
+  //         (r) => false,
+  //       );
+  //     }
+  //   }
+  // }
 
   void _toast(String msg) =>
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
@@ -833,6 +951,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
       ),
     );
   }
+// lib/screens/login_screen.dart - Updated _create method
 
   Future<void> _create() async {
     if (!_formKey.currentState!.validate()) return;
@@ -843,6 +962,10 @@ class _SignUpScreenState extends State<SignUpScreen> {
         password: _pwdCtrl.text,
       );
       final u = cred.user!;
+
+      // Initialize trial and subscription for new user
+      await _initializeSubscriptionForNewUser(u);
+
       await _db.collection('users').doc(u.uid).set({
         'uid': u.uid,
         'email': u.email,
@@ -851,9 +974,10 @@ class _SignUpScreenState extends State<SignUpScreen> {
         'settings': {
           'homeThemeMode': 'auto',
           'autoPlay': true,
-          'commentsEnabled': false, // default off for kids
+          'commentsEnabled': false,
         },
       }, SetOptions(merge: true));
+
       if (!mounted) return;
       Navigator.pushAndRemoveUntil(
         context,
@@ -866,6 +990,61 @@ class _SignUpScreenState extends State<SignUpScreen> {
       if (mounted) setState(() => _creating = false);
     }
   }
+
+  Future<void> _initializeSubscriptionForNewUser(User user) async {
+    try {
+      // Initialize services
+      await SubscriptionService().initialize();
+      await TrialService().initialize();
+
+      // Sync with RevenueCat
+      await Purchases.logIn(user.uid);
+      final customerInfo = await Purchases.getCustomerInfo();
+
+      // Update Firestore with subscription info
+      await SubscriptionService().updateSubscriptionInFirestore(
+        userId: user.uid,
+        customerInfo: customerInfo,
+      );
+
+      debugPrint('✅ Subscription initialized for new user: ${user.uid}');
+      debugPrint('🎯 Trial status: ${await TrialService().isTrialEligible}');
+    } catch (e) {
+      debugPrint('❌ Error initializing subscription for new user: $e');
+    }
+  }
+  // Future<void> _create() async {
+  //   if (!_formKey.currentState!.validate()) return;
+  //   setState(() => _creating = true);
+  //   try {
+  //     final cred = await _auth.createUserWithEmailAndPassword(
+  //       email: _emailCtrl.text.trim(),
+  //       password: _pwdCtrl.text,
+  //     );
+  //     final u = cred.user!;
+  //     await _db.collection('users').doc(u.uid).set({
+  //       'uid': u.uid,
+  //       'email': u.email,
+  //       'displayName': _nameCtrl.text.trim(),
+  //       'createdAt': FieldValue.serverTimestamp(),
+  //       'settings': {
+  //         'homeThemeMode': 'auto',
+  //         'autoPlay': true,
+  //         'commentsEnabled': false, // default off for kids
+  //       },
+  //     }, SetOptions(merge: true));
+  //     if (!mounted) return;
+  //     Navigator.pushAndRemoveUntil(
+  //       context,
+  //       MaterialPageRoute(builder: (_) => const MasterProfileScreen()),
+  //       (r) => false,
+  //     );
+  //   } on FirebaseAuthException catch (e) {
+  //     _toast(e.message ?? e.code);
+  //   } finally {
+  //     if (mounted) setState(() => _creating = false);
+  //   }
+  // }
 
   @override
   void dispose() {

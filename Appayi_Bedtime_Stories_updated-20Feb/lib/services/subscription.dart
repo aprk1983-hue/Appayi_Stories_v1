@@ -296,6 +296,8 @@ class SubscriptionService {
       debugPrint('❌ Error syncing user with RevenueCat: $e');
     }
   }
+// lib/services/subscription_service.dart (updated)
+// Add this method to sync trial with subscription status
 
   Future<void> updateSubscriptionInFirestore({
     required String userId,
@@ -305,55 +307,85 @@ class SubscriptionService {
       final entitlement = customerInfo.entitlements.all[_entitlementId];
       final hasActivePro = entitlement?.isActive ?? false;
 
-      // Get trial status
-      final isInTrial = await _trialService.isTrialEligible;
-      final remainingTrialDays = await _trialService.getRemainingTrialDays();
+      // Get trial status from Firestore (not local)
+      final trialDoc =
+          await _firestore.collection('user_trials').doc(userId).get();
+      final isInTrial =
+          trialDoc.exists && (trialDoc.data()?['isActive'] ?? false);
+      final remainingTrialDays =
+          isInTrial ? await _trialService.getRemainingTrialDays() : 0;
 
-      // Check if the user is in RevenueCat trial
-      final isRevenueCatTrial = entitlement != null &&
-          entitlement.latestPurchaseDate != null &&
-          entitlement.originalPurchaseDate != null &&
-          entitlement.latestPurchaseDate == entitlement.originalPurchaseDate &&
-          hasActivePro;
+      // If user just subscribed, mark trial as inactive
+      if (hasActivePro && isInTrial) {
+        await _firestore.collection('user_trials').doc(userId).update({
+          'isActive': false,
+          'convertedToPaid': true,
+          'convertedAt': FieldValue.serverTimestamp(),
+        });
+      }
 
-      final subscriptionData = {
-        'userId': userId,
-        'hasActiveSubscription': hasActivePro,
-        'isInTrial': isInTrial,
-        'remainingTrialDays': remainingTrialDays,
-        'isRevenueCatTrial': isRevenueCatTrial,
-        'entitlementId': _entitlementId,
-        'isActive': hasActivePro,
-        'expirationDate': entitlement?.expirationDate,
-        'willRenew': entitlement?.willRenew ?? false,
-        'productIdentifier': entitlement?.productIdentifier,
-        'lastChecked': FieldValue.serverTimestamp(),
-        'originalPurchaseDate': entitlement?.latestPurchaseDate,
-      };
-
-      await _firestore
-          .collection(_collection)
-          .doc(userId)
-          .set(subscriptionData, SetOptions(merge: true));
-
-      // Update user doc
-      await _firestore.collection('users').doc(userId).update({
-        'subscription': {
-          'hasActive': hasActivePro,
-          'isInTrial': isInTrial,
-          'remainingTrialDays': remainingTrialDays,
-          'lastUpdated': FieldValue.serverTimestamp(),
-        }
-      });
-
-      _updateSubscriptionStatus(hasActivePro);
-
-      debugPrint(
-          '📱 Subscription status updated: hasActive=$hasActivePro, isInTrial=$isInTrial, remainingDays=$remainingTrialDays');
+      // ... rest of your existing code
     } catch (e) {
       debugPrint('❌ Error updating Firestore subscription: $e');
     }
   }
+  // Future<void> updateSubscriptionInFirestore({
+  //   required String userId,
+  //   required CustomerInfo customerInfo,
+  // }) async {
+  //   try {
+  //     final entitlement = customerInfo.entitlements.all[_entitlementId];
+  //     final hasActivePro = entitlement?.isActive ?? false;
+
+  //     // Get trial status
+  //     final isInTrial = await _trialService.isTrialEligible;
+  //     final remainingTrialDays = await _trialService.getRemainingTrialDays();
+
+  //     // Check if the user is in RevenueCat trial
+  //     final isRevenueCatTrial = entitlement != null &&
+  //         entitlement.latestPurchaseDate != null &&
+  //         entitlement.originalPurchaseDate != null &&
+  //         entitlement.latestPurchaseDate == entitlement.originalPurchaseDate &&
+  //         hasActivePro;
+
+  //     final subscriptionData = {
+  //       'userId': userId,
+  //       'hasActiveSubscription': hasActivePro,
+  //       'isInTrial': isInTrial,
+  //       'remainingTrialDays': remainingTrialDays,
+  //       'isRevenueCatTrial': isRevenueCatTrial,
+  //       'entitlementId': _entitlementId,
+  //       'isActive': hasActivePro,
+  //       'expirationDate': entitlement?.expirationDate,
+  //       'willRenew': entitlement?.willRenew ?? false,
+  //       'productIdentifier': entitlement?.productIdentifier,
+  //       'lastChecked': FieldValue.serverTimestamp(),
+  //       'originalPurchaseDate': entitlement?.latestPurchaseDate,
+  //     };
+
+  //     await _firestore
+  //         .collection(_collection)
+  //         .doc(userId)
+  //         .set(subscriptionData, SetOptions(merge: true));
+
+  //     // Update user doc
+  //     await _firestore.collection('users').doc(userId).update({
+  //       'subscription': {
+  //         'hasActive': hasActivePro,
+  //         'isInTrial': isInTrial,
+  //         'remainingTrialDays': remainingTrialDays,
+  //         'lastUpdated': FieldValue.serverTimestamp(),
+  //       }
+  //     });
+
+  //     _updateSubscriptionStatus(hasActivePro);
+
+  //     debugPrint(
+  //         '📱 Subscription status updated: hasActive=$hasActivePro, isInTrial=$isInTrial, remainingDays=$remainingTrialDays');
+  //   } catch (e) {
+  //     debugPrint('❌ Error updating Firestore subscription: $e');
+  //   }
+  // }
 
   Future<bool> checkSubscriptionStatus({bool forceRefresh = false}) async {
     try {

@@ -59,11 +59,13 @@ class DefaultFirebaseOptions {
 
   static const FirebaseOptions ios = FirebaseOptions(
     apiKey: 'AIzaSyAgjOMPKVoAuSR1Oi4vcgWpzR-UO7eFsoA',
-    appId: '1:889447214349:ios:971f68a27ca64876735444',
+    appId: '1:889447214349:ios:0175aac2cd9fea80735444',
     messagingSenderId: '889447214349',
     projectId: 'my-audio-story-app',
     storageBucket: 'my-audio-story-app.firebasestorage.app',
-    iosBundleId: 'com.example.audioStoryApp',
+    androidClientId: '889447214349-2ha9k764k0ipbfdopifvsmjmpsfl57gk.apps.googleusercontent.com',
+    iosClientId: '889447214349-lrjrrtt6dedgaqocfm1obn595tdrm5oi.apps.googleusercontent.com',
+    iosBundleId: 'com.app.audiostoryapp',
   );
 
   static const FirebaseOptions macos = FirebaseOptions(
@@ -72,7 +74,7 @@ class DefaultFirebaseOptions {
     messagingSenderId: '889447214349',
     projectId: 'my-audio-story-app',
     storageBucket: 'my-audio-story-app.firebasestorage.app',
-    iosBundleId: 'com.example.audioStoryApp',
+    iosBundleId: 'com.app.audiostoryapp',
   );
 
   static const FirebaseOptions windows = FirebaseOptions(

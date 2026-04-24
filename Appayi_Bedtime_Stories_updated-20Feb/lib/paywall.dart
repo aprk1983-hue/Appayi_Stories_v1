@@ -111,7 +111,7 @@ class _RevenueCatSplashScreenState extends State<RevenueCatSplashScreen> {
       final configuration = Platform.isAndroid
           ? PurchasesConfiguration('goog_hDJJIjRdZpkNoEMOMsGsYukoQMW')
           : Platform.isIOS
-              ? PurchasesConfiguration('your_ios_key_here')
+              ? PurchasesConfiguration('appl_QDuWPPIbgWbMlVvyZpTxIQcMeRd')
               : throw UnsupportedError("Unsupported platform");
 
       await Purchases.setDebugLogsEnabled(!kReleaseMode);

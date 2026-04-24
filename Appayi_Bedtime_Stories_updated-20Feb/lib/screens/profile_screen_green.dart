@@ -604,11 +604,35 @@ class _ProfileScreenState extends State<ProfileScreen> {
           ),
 
           const SizedBox(height: 24),
+          // In ProfileScreen.dart - Update the logout button
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 64.0),
             child: ElevatedButton(
               onPressed: () async {
-                await AuthService().signOut();
+                try {
+                  // Show loading indicator
+                  setState(() => _loading = true);
+
+                  // Sign out with RevenueCat cleanup
+                  await AuthService().signOut();
+
+                  // Navigate to login screen if not mounted
+                  if (mounted) {
+                    Navigator.of(context).pushAndRemoveUntil(
+                      _smoothRoute(const OnboardingCarouselScreen()),
+                      (route) => false,
+                    );
+                  }
+                } catch (e) {
+                  if (mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                          content:
+                              Text('Error signing out. Please try again.')),
+                    );
+                    setState(() => _loading = false);
+                  }
+                }
               },
               style: ElevatedButton.styleFrom(
                 backgroundColor: accentColor,
@@ -616,13 +640,19 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 padding:
                     const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
                 shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(28)),
+                  borderRadius: BorderRadius.circular(28),
+                ),
                 textStyle: const TextStyle(
                   fontWeight: FontWeight.w400,
                   fontSize: 16,
                 ),
               ),
-              child: const Text('Logout'),
+              child: _loading
+                  ? const SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(strokeWidth: 2))
+                  : const Text('Logout'),
             ),
           ),
         ],

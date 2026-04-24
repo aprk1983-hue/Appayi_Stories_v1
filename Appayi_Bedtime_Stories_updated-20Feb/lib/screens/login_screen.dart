@@ -463,6 +463,41 @@ class _LoginScreenState extends State<LoginScreen> {
     }
   }
 
+  Future<void> _handleApple() async {
+    if (_isLoading) return;
+    setState(() => _isLoading = true);
+
+    final cred = await _authService.signInWithApple();
+
+    if (mounted) setState(() => _isLoading = false);
+
+    if (cred == null) {
+      _toast('Apple Sign-In failed or cancelled.');
+      return;
+    }
+
+    // Initialize subscription and trial services after Apple login
+    await _initializeSubscriptionServices();
+
+    final bool isNewUser = cred.additionalUserInfo?.isNewUser ?? false;
+
+    if (mounted) {
+      if (isNewUser) {
+        // New user -> Go to Master Profile
+        Navigator.of(context).pushAndRemoveUntil(
+          MaterialPageRoute(builder: (_) => const MasterProfileScreen()),
+          (r) => false,
+        );
+      } else {
+        // Existing user -> Go to AuthGate
+        Navigator.of(context).pushAndRemoveUntil(
+          MaterialPageRoute(builder: (_) => const AuthGate()),
+          (r) => false,
+        );
+      }
+    }
+  }
+
   Future<void> _handleGoogle() async {
     if (_isLoading) return;
     setState(() => _isLoading = true);
@@ -844,7 +879,44 @@ class _LoginScreenState extends State<LoginScreen> {
                     ),
 
                     const SizedBox(height: 18),
+                    const SizedBox(
+                        height:
+                            18), // This is already there after Google button
 
+// ADD THIS APPLE BUTTON BEFORE the TOS section
+                    if (!kIsWeb &&
+                        (Platform.isIOS ||
+                            Platform.isMacOS)) // Only show on Apple platforms
+                      Padding(
+                        padding: const EdgeInsets.only(top: 8),
+                        child: InkWell(
+                          onTap: _isLoading ? null : _handleApple,
+                          borderRadius: BorderRadius.circular(28),
+                          child: Ink(
+                            width: 88,
+                            height: 88,
+                            decoration: BoxDecoration(
+                              color: Colors.black.withOpacity(0.88),
+                              borderRadius: BorderRadius.circular(24),
+                              boxShadow: const [
+                                BoxShadow(
+                                    color: Colors.black38,
+                                    blurRadius: 10,
+                                    offset: Offset(0, 6))
+                              ],
+                            ),
+                            child: const Center(
+                              child: Icon(
+                                Icons.apple,
+                                size: 48,
+                                color: Colors.white,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+
+                    const SizedBox(height: 18), // Keep this existing line
                     // TOS / Privacy with age gate
                     Wrap(
                       alignment: WrapAlignment.center,

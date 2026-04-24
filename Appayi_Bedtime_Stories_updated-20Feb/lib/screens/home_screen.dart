@@ -33,8 +33,6 @@ import 'package:audio_story_app/services/offline_story_store.dart';
 import 'package:audio_story_app/utils/language_data.dart';
 import 'package:audio_story_app/widgets/app_loaders.dart';
 
-import '../paywall.dart';
-
 /* --------------------------------------------------------------------------
  * Story badge helpers
  * --------------------------------------------------------------------------
@@ -207,13 +205,27 @@ class _HomeScreenState extends State<HomeScreen>
   bool _isTrial = false;
   int _remainingTrialDays = 0;
 
-// Add this variable
+  late final SharedPreferences _preferences;
   bool _hasShownTrialPopup = false;
+  static const String _kTrialPopupShownPrefsKey = 'trial_popup_shown';
+  Future<void> _initSharedPreferences() async {
+    _preferences = await SharedPreferences.getInstance();
+    _hasShownTrialPopup =
+        _preferences.getBool(_kTrialPopupShownPrefsKey) ?? false;
+  }
 
-  // Updated method to show trial popup - ONLY for trial users without subscription
+  // Updated method to show trial popup with SharedPreferences
   Future<void> _showTrialPopupIfNeeded() async {
-    // Don't show if already shown in this session
-    if (_hasShownTrialPopup) return;
+    // Wait for SharedPreferences to initialize
+    if (_preferences == null) {
+      await _initSharedPreferences();
+    }
+
+    // Don't show if already shown in this session OR ever before
+    if (_hasShownTrialPopup) {
+      debugPrint('🚫 Trial popup already shown before - skipping');
+      return;
+    }
 
     // CRITICAL: Check if user has active subscription FIRST
     if (_hasActiveSubscription) {
@@ -233,27 +245,32 @@ class _HomeScreenState extends State<HomeScreen>
 
     if (!shouldShowPopup) return;
 
+    // Mark as shown immediately to prevent multiple triggers
     _hasShownTrialPopup = true;
+    await _preferences.setBool(_kTrialPopupShownPrefsKey, true);
 
-    // Wait a bit for UI to load
-    await Future.delayed(const Duration(milliseconds: 500));
-
+    // Additional check to ensure dialog doesn't get lost behind splash screen
     if (!mounted) return;
 
-    await showDialog(
-      context: context,
-      barrierDismissible: true,
-      builder: (context) => TrialPopup(
-        remainingDays: remainingDays,
-        isExpired: isExpired,
-        onClose: () {
-          Navigator.pop(context);
-        },
-      ),
-    );
+    // Use addPostFrameCallback to ensure the dialog is shown after current frame
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+
+      showDialog(
+        context: context,
+        barrierDismissible: true,
+        builder: (context) => TrialPopup(
+          remainingDays: remainingDays,
+          isExpired: isExpired,
+          onClose: () {
+            Navigator.pop(context);
+          },
+        ),
+      );
+    });
   }
 
-  // Updated initialization method
+  // Update subscription status listener to reset trial popup flag when subscription is purchased
   Future<void> _initSubscriptionService() async {
     _subscriptionService = SubscriptionService();
     await _subscriptionService.initialize();
@@ -268,7 +285,7 @@ class _HomeScreenState extends State<HomeScreen>
     setState(() {
       _hasActiveSubscription = hasActiveSub;
       _hasAccess = hasAccess;
-      _isTrial = isInTrial && !hasActiveSub; // Only in trial if not subscribed
+      _isTrial = isInTrial && !hasActiveSub;
       _remainingTrialDays = remainingDays;
     });
 
@@ -290,11 +307,17 @@ class _HomeScreenState extends State<HomeScreen>
       setState(() {
         _hasActiveSubscription = hasActiveSub;
         _hasAccess = hasAccess;
-        _isTrial =
-            isInTrial && !hasActiveSub; // Reset trial status if subscribed
+        _isTrial = isInTrial && !hasActiveSub;
         _remainingTrialDays = remainingDays;
-        _hasShownTrialPopup = false; // Reset so we can show if needed
       });
+
+      // If user just purchased subscription, we can optionally reset trial popup flag
+      if (hasActiveSub) {
+        // User subscribed, we can clear the trial popup flag if needed
+        if (_preferences != null) {
+          await _preferences.remove(_kTrialPopupShownPrefsKey);
+        }
+      }
 
       debugPrint('🔄 Subscription status updated:');
       debugPrint('   Has Active Subscription: $_hasActiveSubscription');
@@ -302,13 +325,20 @@ class _HomeScreenState extends State<HomeScreen>
       debugPrint('   Is In Trial: $_isTrial');
     });
 
-    // Show trial popup after UI loads (only if not subscribed)
+    // DELAYED: Show trial popup after UI is fully rendered and splash navigation is complete
+    // Wait for SharedPreferences to initialize first
+    await _initSharedPreferences();
+
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      _showTrialPopupIfNeeded();
+      // Add a longer delay to ensure the splash screen navigation is complete
+      Future.delayed(const Duration(milliseconds: 800), () {
+        if (mounted) {
+          _showTrialPopupIfNeeded();
+        }
+      });
     });
   }
 
-  // Update the app bar trial badge - only show for trial users without subscription
   Widget _buildTrialBadge() {
     // Only show if user is in trial AND not subscribed
     if (_isTrial && _remainingTrialDays > 0 && !_hasActiveSubscription) {
@@ -908,7 +938,7 @@ class _HomeScreenState extends State<HomeScreen>
         title: Row(
           children: [
             GestureDetector(
-              onTap: _showAvatarPickerSheet,
+              // onTap: _showAvatarPickerSheet,
               child: Stack(
                 children: [
                   CircleAvatar(
@@ -928,20 +958,20 @@ class _HomeScreenState extends State<HomeScreen>
                         ? const Icon(Icons.person, color: Colors.white)
                         : null,
                   ),
-                  Positioned(
-                    right: 0,
-                    bottom: 0,
-                    child: Container(
-                      width: 16,
-                      height: 16,
-                      decoration: BoxDecoration(
-                        color: Colors.black.withOpacity(0.6),
-                        shape: BoxShape.circle,
-                      ),
-                      child:
-                          const Icon(Icons.edit, size: 10, color: Colors.white),
-                    ),
-                  ),
+                  //   Positioned(
+                  //     right: 0,
+                  //     bottom: 0,
+                  //     child: Container(
+                  //       width: 16,
+                  //       height: 16,
+                  //       decoration: BoxDecoration(
+                  //         color: Colors.black.withOpacity(0.6),
+                  //         shape: BoxShape.circle,
+                  //       ),
+                  //       child:
+                  //           const Icon(Icons.edit, size: 10, color: Colors.white),
+                  //     ),
+                  //   ),
                 ],
               ),
             ),

@@ -6,6 +6,8 @@
 	<true/>
 	<key>CFBundleDevelopmentRegion</key>
 	<string>$(DEVELOPMENT_LANGUAGE)</string>
+	<key>MinimumOSVersion</key>
+    <string>15.0</string>
 	<key>CFBundleDisplayName</key>
 	<string>Appayi Stories</string>
 	<key>CFBundleExecutable</key>

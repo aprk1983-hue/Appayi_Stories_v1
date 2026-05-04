@@ -875,6 +875,90 @@ class _HomeScreenState extends State<HomeScreen>
     );
   }
 
+  Widget _buildLockedPlaceholder(
+      {required double height, required String message}) {
+    return SizedBox(
+      height: height,
+      child: Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.1),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(
+                Icons.lock_outline,
+                size: 40,
+                color: Colors.white70,
+              ),
+            ),
+            const SizedBox(height: 16),
+            Text(
+              'Premium Content',
+              style: TextStyle(
+                color: Colors.white.withOpacity(0.8),
+                fontWeight: FontWeight.bold,
+                fontSize: 16,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              message,
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: Colors.white.withOpacity(0.5),
+                fontSize: 12,
+              ),
+            ),
+            const SizedBox(height: 16),
+            ElevatedButton(
+              onPressed: () => showPremiumSubscribeDialog(context),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFFFF9800),
+                foregroundColor: Colors.white,
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 24, vertical: 10),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(20),
+                ),
+              ),
+              child: const Text('Subscribe Now'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildLockedSmallPlaceholder() {
+    return SizedBox(
+      height: 200,
+      child: Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              Icons.lock_outline,
+              size: 32,
+              color: Colors.white.withOpacity(0.5),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Subscribe to unlock',
+              style: TextStyle(
+                color: Colors.white.withOpacity(0.5),
+                fontSize: 12,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     super.build(context);
@@ -1197,19 +1281,25 @@ class _HomeScreenState extends State<HomeScreen>
                       ),
                     ),
                     // What's New section - LOCKED for non-subscribers
+                    // hasAccess
+                    //     ? _WhatsNewRow(
+                    //         stream: _cachedStream('whatsNew:$langCode',
+                    //             _qNewest(language: langCode).limit(10)))
+                    //     : SubscriptionLock(
+                    //         onLockPressed: () => showPremiumSubscribeDialog(
+                    //             context), // Call the function, not just create widget
+                    //         child: _WhatsNewRow(
+                    //           stream: _cachedStream('whatsNew:$langCode',
+                    //               _qNewest(language: langCode).limit(10)),
+                    //         ),
+                    //       ),
                     hasAccess
                         ? _WhatsNewRow(
                             stream: _cachedStream('whatsNew:$langCode',
                                 _qNewest(language: langCode).limit(10)))
-                        : SubscriptionLock(
-                            onLockPressed: () => showPremiumSubscribeDialog(
-                                context), // Call the function, not just create widget
-                            child: _WhatsNewRow(
-                              stream: _cachedStream('whatsNew:$langCode',
-                                  _qNewest(language: langCode).limit(10)),
-                            ),
-                          ),
-                    // Category section - LOCKED for non-subscribers
+                        : _buildLockedPlaceholder(
+                            height: 280,
+                            message: 'Subscribe to access new stories'),
                     hasAccess
                         ? _CategorySectionCard(
                             categories: langCategories,
@@ -1224,22 +1314,41 @@ class _HomeScreenState extends State<HomeScreen>
                                     _qNewest(category: key, language: langCode),
                                 orderByField: 'createdAt'),
                           )
-                        : SubscriptionLock(
-                            onLockPressed: () =>
-                                showPremiumSubscribeDialog(context),
-                            child: _CategorySectionCard(
-                              categories: langCategories,
-                              langCode: langCode,
-                              onTapMore: () {
-                                // This won't be called because it's wrapped in SubscriptionLock
-                                // but we need to provide a callback
-                              },
-                              onTapCategory: (label, key) {
-                                // This won't be called because it's wrapped in SubscriptionLock
-                                // but we need to provide a callback
-                              },
-                            ),
-                          ),
+                        : _buildLockedPlaceholder(
+                            height: 200,
+                            message: 'Subscribe to browse all genres'),
+
+                    // Category section - LOCKED for non-subscribers
+                    // hasAccess
+                    //     ? _CategorySectionCard(
+                    //         categories: langCategories,
+                    //         langCode: langCode,
+                    //         onTapMore: () => Navigator.push(
+                    //             context,
+                    //             MaterialPageRoute(
+                    //                 builder: (_) => const CategoriesScreen())),
+                    //         onTapCategory: (label, key) => _openViewAll(
+                    //             title: label,
+                    //             base:
+                    //                 _qNewest(category: key, language: langCode),
+                    //             orderByField: 'createdAt'),
+                    //       )
+                    //     : SubscriptionLock(
+                    //         onLockPressed: () =>
+                    //             showPremiumSubscribeDialog(context),
+                    //         child: _CategorySectionCard(
+                    //           categories: langCategories,
+                    //           langCode: langCode,
+                    //           onTapMore: () {
+                    //             // This won't be called because it's wrapped in SubscriptionLock
+                    //             // but we need to provide a callback
+                    //           },
+                    //           onTapCategory: (label, key) {
+                    //             // This won't be called because it's wrapped in SubscriptionLock
+                    //             // but we need to provide a callback
+                    //           },
+                    //         ),
+                    //       ),
                     _SectionCard(
                       title: 'Popular in $langName',
                       badgeText: 'Free',
@@ -1265,11 +1374,8 @@ class _HomeScreenState extends State<HomeScreen>
                       final key = c['key'] ?? '';
                       return _SectionCard(
                         title: label,
-                        badgeText: !hasAccess
-                            ? 'PREMIUM'
-                            : null, // Add badge for locked sections
-                        badgeColor: const Color(
-                            0xFFFF9800), // Orange color for premium badge
+                        badgeText: !hasAccess ? 'PREMIUM' : null,
+                        badgeColor: const Color(0xFFFF9800),
                         onMore: () {
                           if (!hasAccess) {
                             showPremiumSubscribeDialog(context);
@@ -1288,17 +1394,7 @@ class _HomeScreenState extends State<HomeScreen>
                                       .limit(10),
                                 ),
                               )
-                            : SubscriptionLock(
-                                onLockPressed: () =>
-                                    showPremiumSubscribeDialog(context),
-                                child: _HorizontalStories(
-                                  stream: _cachedStream(
-                                    'cat:$langCode:$key',
-                                    _qNewest(category: key, language: langCode)
-                                        .limit(10),
-                                  ),
-                                ),
-                              ),
+                            : _buildLockedSmallPlaceholder(), // Simple placeholder
                       );
                     }).toList(),
                   ],

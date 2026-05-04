@@ -1,4 +1,3 @@
-
 // lib/screens/home_screen.dart
 import 'dart:async';
 import 'package:flutter/material.dart';
@@ -64,8 +63,8 @@ class HomeScreen extends StatefulWidget {
   State<HomeScreen> createState() => _HomeScreenState();
 }
 
-class _HomeScreenState extends State<HomeScreen> with AutomaticKeepAliveClientMixin<HomeScreen> {
-
+class _HomeScreenState extends State<HomeScreen>
+    with AutomaticKeepAliveClientMixin<HomeScreen> {
   static final Set<String> _hiddenCategoryNames = <String>{
     'bedtime stories',
     'science and environmental',
@@ -82,7 +81,8 @@ class _HomeScreenState extends State<HomeScreen> with AutomaticKeepAliveClientMi
   static bool _isHiddenCategory({required String key, required String label}) {
     final nk = _normCat(key);
     final nl = _normCat(label);
-    return _hiddenCategoryNames.contains(nk) || _hiddenCategoryNames.contains(nl);
+    return _hiddenCategoryNames.contains(nk) ||
+        _hiddenCategoryNames.contains(nl);
   }
 
   static List<Map<String, String>> _visibleCategories(List<dynamic> raw) {
@@ -110,7 +110,8 @@ class _HomeScreenState extends State<HomeScreen> with AutomaticKeepAliveClientMi
   StreamSubscription<Uri>? _linkSubscription;
   bool _deepLinkNavigating = false;
 
-  final Map<String, Stream<QuerySnapshot<Map<String, dynamic>>>> _streamCache = {};
+  final Map<String, Stream<QuerySnapshot<Map<String, dynamic>>>> _streamCache =
+      {};
 
   Stream<QuerySnapshot<Map<String, dynamic>>> _cachedStream(
     String key,
@@ -122,19 +123,24 @@ class _HomeScreenState extends State<HomeScreen> with AutomaticKeepAliveClientMi
   @override
   bool get wantKeepAlive => true;
 
-
   String _langLabelEn(String code) {
     switch (code) {
-      case 'en': return 'English';
-      case 'hi': return 'Hindi';
-      case 'ta': return 'Tamil';
-      case 'te': return 'Telugu';
-      case 'ml': return 'Malayalam';
-      case 'kn': return 'Kannada';
-      default: return code.toUpperCase();
+      case 'en':
+        return 'English';
+      case 'hi':
+        return 'Hindi';
+      case 'ta':
+        return 'Tamil';
+      case 'te':
+        return 'Telugu';
+      case 'ml':
+        return 'Malayalam';
+      case 'kn':
+        return 'Kannada';
+      default:
+        return code.toUpperCase();
     }
   }
-
 
   @override
   void initState() {
@@ -148,8 +154,11 @@ class _HomeScreenState extends State<HomeScreen> with AutomaticKeepAliveClientMi
       setState(() {
         _selectedLanguages = langs;
         _userData = data;
-        if (_activeLanguage.isEmpty || !_selectedLanguages.contains(_activeLanguage)) {
-          _activeLanguage = _selectedLanguages.contains('en') ? 'en' : _selectedLanguages.first;
+        if (_activeLanguage.isEmpty ||
+            !_selectedLanguages.contains(_activeLanguage)) {
+          _activeLanguage = _selectedLanguages.contains('en')
+              ? 'en'
+              : _selectedLanguages.first;
         }
       });
     });
@@ -204,7 +213,8 @@ class _HomeScreenState extends State<HomeScreen> with AutomaticKeepAliveClientMi
             if (!mounted) return;
             Future.delayed(const Duration(milliseconds: 150), () {
               if (!mounted) return;
-              Navigator.push(context, storyPlayerRoute(decodedId)).whenComplete(() {
+              Navigator.push(context, storyPlayerRoute(decodedId))
+                  .whenComplete(() {
                 _deepLinkNavigating = false;
               });
             });
@@ -247,20 +257,26 @@ class _HomeScreenState extends State<HomeScreen> with AutomaticKeepAliveClientMi
     return q;
   }
 
-  Query<Map<String, dynamic>> _qNewest({String? category, required String language}) {
-    Query<Map<String, dynamic>> q = FirebaseFirestore.instance.collection('stories');
+  Query<Map<String, dynamic>> _qNewest(
+      {String? category, required String language}) {
+    Query<Map<String, dynamic>> q =
+        FirebaseFirestore.instance.collection('stories');
     q = _applyFilters(q, language: language, category: category);
     return q.orderBy('createdAt', descending: true);
   }
 
-  Query<Map<String, dynamic>> _qMostLiked({String? category, required String language}) {
-    Query<Map<String, dynamic>> q = FirebaseFirestore.instance.collection('stories');
+  Query<Map<String, dynamic>> _qMostLiked(
+      {String? category, required String language}) {
+    Query<Map<String, dynamic>> q =
+        FirebaseFirestore.instance.collection('stories');
     q = _applyFilters(q, language: language, category: category);
     return q.orderBy('likes', descending: true);
   }
 
-  Query<Map<String, dynamic>> _qMostViewed({String? category, required String language}) {
-    Query<Map<String, dynamic>> q = FirebaseFirestore.instance.collection('stories');
+  Query<Map<String, dynamic>> _qMostViewed(
+      {String? category, required String language}) {
+    Query<Map<String, dynamic>> q =
+        FirebaseFirestore.instance.collection('stories');
     q = _applyFilters(q, language: language, category: category);
     return q.orderBy('views', descending: true);
   }
@@ -284,7 +300,8 @@ class _HomeScreenState extends State<HomeScreen> with AutomaticKeepAliveClientMi
 
   Route _rewardsRoute() {
     return PageRouteBuilder(
-      pageBuilder: (context, animation, secondaryAnimation) => const RewardsScreen(),
+      pageBuilder: (context, animation, secondaryAnimation) =>
+          const RewardsScreen(),
       transitionDuration: const Duration(milliseconds: 240),
       reverseTransitionDuration: const Duration(milliseconds: 200),
       transitionsBuilder: (context, animation, secondaryAnimation, child) {
@@ -307,7 +324,6 @@ class _HomeScreenState extends State<HomeScreen> with AutomaticKeepAliveClientMi
     );
   }
 
-
   Route _downloadsRoute() {
     return PageRouteBuilder(
       pageBuilder: (context, animation, secondaryAnimation) =>
@@ -315,7 +331,8 @@ class _HomeScreenState extends State<HomeScreen> with AutomaticKeepAliveClientMi
       transitionDuration: const Duration(milliseconds: 240),
       reverseTransitionDuration: const Duration(milliseconds: 200),
       transitionsBuilder: (context, animation, secondaryAnimation, child) {
-        final curved = CurvedAnimation(parent: animation, curve: Curves.easeOutCubic);
+        final curved =
+            CurvedAnimation(parent: animation, curve: Curves.easeOutCubic);
         final offsetTween = Tween<Offset>(
           begin: const Offset(0.06, 0),
           end: Offset.zero,
@@ -358,7 +375,7 @@ class _HomeScreenState extends State<HomeScreen> with AutomaticKeepAliveClientMi
     );
   }
 
-@override
+  @override
   Widget build(BuildContext context) {
     super.build(context);
     final dark = Theme.of(context).brightness == Brightness.dark;
@@ -385,169 +402,192 @@ class _HomeScreenState extends State<HomeScreen> with AutomaticKeepAliveClientMi
     }
 
     final g = gender.trim().toLowerCase();
-    
+
     final Color nameColor = (g == 'male' || g == 'boy')
-        ? const Color(0xFF00C3FF) 
+        ? const Color(0xFF00C3FF)
         : (g == 'female' || g == 'girl')
-            ? const Color(0xFFFF00FF) 
+            ? const Color(0xFFFF00FF)
             : const Color(0xFF9C27B0);
 
     final List<String> langButtons =
         _selectedLanguages.isNotEmpty ? _selectedLanguages : <String>['en'];
-    const double pinnedLangHeaderHeight = 44 + 16; 
+    const double pinnedLangHeaderHeight = 44 + 16;
 
     return AppBackground(
-      animated: true,
-      dimOpacity: 0.08,
-      child: Scaffold(
-      backgroundColor: Colors.transparent,
-      appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        surfaceTintColor: Colors.transparent,
-        scrolledUnderElevation: 0,
-        shadowColor: Colors.transparent,
-        elevation: 0,
-        titleSpacing: 16,
-        title: Row(
-          children: [
-            CircleAvatar(
-              radius: 20,
-              backgroundColor: const Color(0xFF90CAF9),
-              backgroundImage:
-                  (avatarUrl?.isNotEmpty ?? false) ? NetworkImage(avatarUrl!) : null,
-              child: (avatarUrl == null || avatarUrl!.isEmpty)
-                  ? const Icon(Icons.person, color: Colors.white)
-                  : null,
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text('Welcome', style: TextStyle(color: onBg2, fontSize: 14)),
-                  Text(
-                    greetName,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                        color: nameColor,
-                        fontWeight: FontWeight.w900,
-                        fontSize: 22),
+        animated: true,
+        dimOpacity: 0.08,
+        child: Scaffold(
+          backgroundColor: Colors.transparent,
+          appBar: AppBar(
+            backgroundColor: Colors.transparent,
+            surfaceTintColor: Colors.transparent,
+            scrolledUnderElevation: 0,
+            shadowColor: Colors.transparent,
+            elevation: 0,
+            titleSpacing: 16,
+            title: Row(
+              children: [
+                CircleAvatar(
+                  radius: 20,
+                  backgroundColor: const Color(0xFF90CAF9),
+                  backgroundImage: (avatarUrl?.isNotEmpty ?? false)
+                      ? NetworkImage(avatarUrl!)
+                      : null,
+                  child: (avatarUrl == null || avatarUrl!.isEmpty)
+                      ? const Icon(Icons.person, color: Colors.white)
+                      : null,
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('Welcome',
+                          style: TextStyle(color: onBg2, fontSize: 14)),
+                      Text(
+                        greetName,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                            color: nameColor,
+                            fontWeight: FontWeight.w900,
+                            fontSize: 22),
+                      ),
+                    ],
                   ),
-                ],
-              ),
+                ),
+              ],
             ),
-          ],
-        ),
-        actions: [
-          IconButton(
-            tooltip: 'Downloads',
-            icon: Icon(Icons.download_for_offline_rounded, color: onBg),
-            onPressed: () => Navigator.of(context).push(_downloadsRoute()),
+            actions: [
+              IconButton(
+                tooltip: 'Downloads',
+                icon: Icon(Icons.download_for_offline_rounded, color: onBg),
+                onPressed: () => Navigator.of(context).push(_downloadsRoute()),
+              ),
+              IconButton(
+                tooltip: 'Rewards',
+                icon: _goldTrophyIcon(onBg),
+                onPressed: () => Navigator.of(context).push(_rewardsRoute()),
+              ),
+              const SizedBox(width: 8),
+            ],
           ),
-
-          IconButton(
-            tooltip: 'Rewards',
-            icon: _goldTrophyIcon(onBg),
-            onPressed: () => Navigator.of(context).push(_rewardsRoute()),
-          ),
-          
-          const SizedBox(width: 8),
-        ],
-      ),
-
-      body: RefreshIndicator(
-        onRefresh: () async => setState(() {}),
-        child: CustomScrollView(
-          physics: const AlwaysScrollableScrollPhysics(),
-          slivers: [
-            const SliverToBoxAdapter(child: SizedBox(height: 10)),
-
-            SliverPersistentHeader(
-              pinned: true,
-              delegate: _LanguageHeaderDelegate(
-                height: pinnedLangHeaderHeight,
-                backgroundColor: bg,
-                child: Padding(
-                  padding: const EdgeInsets.fromLTRB(12, 8, 12, 8),
-                  child: _LanguageButtonsRow(
-                    languages: langButtons,
-                    active: _activeLanguage.isNotEmpty
+          body: RefreshIndicator(
+            onRefresh: () async => setState(() {}),
+            child: CustomScrollView(
+              physics: const AlwaysScrollableScrollPhysics(),
+              slivers: [
+                const SliverToBoxAdapter(child: SizedBox(height: 10)),
+                SliverPersistentHeader(
+                  pinned: true,
+                  delegate: _LanguageHeaderDelegate(
+                    height: pinnedLangHeaderHeight,
+                    backgroundColor: bg,
+                    child: Padding(
+                      padding: const EdgeInsets.fromLTRB(12, 8, 12, 8),
+                      child: _LanguageButtonsRow(
+                        languages: langButtons,
+                        active: _activeLanguage.isNotEmpty
+                            ? _activeLanguage
+                            : ((_selectedLanguages.contains('en')
+                                ? 'en'
+                                : (_selectedLanguages.isNotEmpty
+                                    ? _selectedLanguages.first
+                                    : 'en'))),
+                        onSelect: (code) =>
+                            setState(() => _activeLanguage = code),
+                      ),
+                    ),
+                  ),
+                ),
+                const SliverToBoxAdapter(child: SizedBox(height: 8)),
+                SliverToBoxAdapter(
+                  child: Builder(builder: (context) {
+                    final langCode = (_activeLanguage.isNotEmpty &&
+                            (_selectedLanguages.contains(_activeLanguage)))
                         ? _activeLanguage
-                        : ((_selectedLanguages.contains('en')
+                        : (_selectedLanguages.contains('en')
                             ? 'en'
                             : (_selectedLanguages.isNotEmpty
                                 ? _selectedLanguages.first
-                                : 'en'))),
-                    onSelect: (code) => setState(() => _activeLanguage = code),
+                                : 'en'));
+                    final langName = _langLabelEn(langCode);
+                    final langCategories = _visibleCategories(
+                        LanguageData.categoriesByLang[langCode] ?? []);
+
+                    return Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        _WhatsNewRow(
+                            stream: _cachedStream('whatsNew:$langCode',
+                                _qNewest(language: langCode).limit(10))),
+                        _CategorySectionCard(
+                          categories: langCategories,
+                          langCode: langCode,
+                          onTapMore: () => Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                  builder: (_) => const CategoriesScreen())),
+                          onTapCategory: (label, key) => _openViewAll(
+                              title: label,
+                              base: _qNewest(category: key, language: langCode),
+                              orderByField: 'createdAt'),
+                        ),
+                        _SectionCard(
+                          title: 'Popular in $langName',
+                          onMore: () => _openViewAll(
+                              title: 'Popular in $langName',
+                              base: _qMostLiked(language: langCode),
+                              orderByField: 'likes'),
+                          child: _HorizontalStories(
+                              stream: _cachedStream('popular:$langCode',
+                                  _qMostLiked(language: langCode).limit(10))),
+                        ),
+                        _SectionCard(
+                          title: 'Most Viewed in $langName',
+                          onMore: () => _openViewAll(
+                              title: 'Most Viewed in $langName',
+                              base: _qMostViewed(language: langCode),
+                              orderByField: 'views'),
+                          child: _HorizontalStories(
+                              stream: _cachedStream('mostViewed:$langCode',
+                                  _qMostViewed(language: langCode).limit(10))),
+                        ),
+                        const SizedBox(height: 6),
+                        ...langCategories.map((c) {
+                          final label = c['label'] ?? '';
+                          final key = c['key'] ?? '';
+                          return _SectionCard(
+                            title: label,
+                            onMore: () => _openViewAll(
+                                title: label,
+                                base:
+                                    _qNewest(category: key, language: langCode),
+                                orderByField: 'createdAt'),
+                            child: _HorizontalStories(
+                                stream: _cachedStream(
+                                    'cat:$langCode:$key',
+                                    _qNewest(category: key, language: langCode)
+                                        .limit(10))),
+                          );
+                        }).toList(),
+                      ],
+                    );
+                  }),
+                ),
+                SliverToBoxAdapter(
+                  child: SizedBox(
+                    height: 24 + MediaQuery.of(context).padding.bottom + 72,
                   ),
                 ),
-              ),
+              ],
             ),
-
-            const SliverToBoxAdapter(child: SizedBox(height: 8)),
-
-            SliverToBoxAdapter(
-              child: Builder(builder: (context) {
-                final langCode = (_activeLanguage.isNotEmpty &&
-                        (_selectedLanguages.contains(_activeLanguage)))
-                    ? _activeLanguage
-                    : (_selectedLanguages.contains('en')
-                        ? 'en'
-                        : (_selectedLanguages.isNotEmpty
-                            ? _selectedLanguages.first
-                            : 'en'));
-                final langName = _langLabelEn(langCode);
-                final langCategories = _visibleCategories(LanguageData.categoriesByLang[langCode] ?? []);
-
-                return Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    _WhatsNewRow(stream: _cachedStream('whatsNew:$langCode', _qNewest(language: langCode).limit(10))),
-                    _CategorySectionCard(
-                      categories: langCategories,
-                      langCode: langCode,
-                      onTapMore: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const CategoriesScreen())),
-                      onTapCategory: (label, key) => _openViewAll(title: label, base: _qNewest(category: key, language: langCode), orderByField: 'createdAt'),
-                    ),
-                    _SectionCard(
-                      title: 'Popular in $langName',
-                      onMore: () => _openViewAll(title: 'Popular in $langName', base: _qMostLiked(language: langCode), orderByField: 'likes'),
-                      child: _HorizontalStories(stream: _cachedStream('popular:$langCode', _qMostLiked(language: langCode).limit(10))),
-                    ),
-                    _SectionCard(
-                      title: 'Most Viewed in $langName',
-                      onMore: () => _openViewAll(title: 'Most Viewed in $langName', base: _qMostViewed(language: langCode), orderByField: 'views'),
-                      child: _HorizontalStories(stream: _cachedStream('mostViewed:$langCode', _qMostViewed(language: langCode).limit(10))),
-                    ),
-                    const SizedBox(height: 6),
-                    ...langCategories.map((c) {
-                      final label = c['label'] ?? '';
-                      final key = c['key'] ?? '';
-                      return _SectionCard(
-                        title: label,
-                        onMore: () => _openViewAll(title: label, base: _qNewest(category: key, language: langCode), orderByField: 'createdAt'),
-                        child: _HorizontalStories(stream: _cachedStream('cat:$langCode:$key', _qNewest(category: key, language: langCode).limit(10))),
-                      );
-                    }).toList(),
-                  ],
-                );
-              }),
-            ),
-            SliverToBoxAdapter(
-              child: SizedBox(
-                height: 24 + MediaQuery.of(context).padding.bottom + 72,
-              ),
-            ),
-          ],
-        ),
-      ),
-    ));
+          ),
+        ));
   }
 }
 
 /* ===================== Layout blocks ===================== */
-
 
 class _LanguageHeaderDelegate extends SliverPersistentHeaderDelegate {
   final double height;
@@ -567,7 +607,8 @@ class _LanguageHeaderDelegate extends SliverPersistentHeaderDelegate {
   double get maxExtent => height;
 
   @override
-  Widget build(BuildContext context, double shrinkOffset, bool overlapsContent) {
+  Widget build(
+      BuildContext context, double shrinkOffset, bool overlapsContent) {
     return Container(
       color: backgroundColor,
       child: child,
@@ -582,7 +623,6 @@ class _LanguageHeaderDelegate extends SliverPersistentHeaderDelegate {
   }
 }
 
-
 class _LanguageButtonsRow extends StatelessWidget {
   final List<String> languages;
   final String active;
@@ -596,13 +636,20 @@ class _LanguageButtonsRow extends StatelessWidget {
 
   String _labelFor(String code) {
     switch (code) {
-      case 'en': return 'English';
-      case 'hi': return 'Hindi';
-      case 'ta': return 'Tamil';
-      case 'te': return 'Telugu';
-      case 'ml': return 'Malayalam';
-      case 'kn': return 'Kannada';
-      default: return code.toUpperCase();
+      case 'en':
+        return 'English';
+      case 'hi':
+        return 'Hindi';
+      case 'ta':
+        return 'Tamil';
+      case 'te':
+        return 'Telugu';
+      case 'ml':
+        return 'Malayalam';
+      case 'kn':
+        return 'Kannada';
+      default:
+        return code.toUpperCase();
     }
   }
 
@@ -660,8 +707,6 @@ class _LanguageButtonsRow extends StatelessWidget {
     );
   }
 }
-
-
 
 class _LangButton extends StatefulWidget {
   final String label;
@@ -749,7 +794,6 @@ class _LangButtonState extends State<_LangButton>
                 ),
               ),
             ),
-
             if (widget.selected || _pressed)
               Positioned.fill(
                 child: IgnorePointer(
@@ -761,7 +805,6 @@ class _LangButtonState extends State<_LangButton>
                   ),
                 ),
               ),
-
             Positioned.fill(
               child: IgnorePointer(
                 child: DecoratedBox(
@@ -777,10 +820,12 @@ class _LangButtonState extends State<_LangButton>
                 ),
               ),
             ),
-
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 12),
-              child: Text(widget.label.toUpperCase(), maxLines: 1, overflow: TextOverflow.ellipsis, style: textStyle),
+              child: Text(widget.label.toUpperCase(),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: textStyle),
             ),
           ],
         ),
@@ -788,7 +833,6 @@ class _LangButtonState extends State<_LangButton>
     );
   }
 }
-
 
 class _GridStoryThumb extends StatelessWidget {
   final Story story;
@@ -812,7 +856,11 @@ class _GridStoryThumb extends StatelessWidget {
           child: Stack(
             fit: StackFit.expand,
             children: [
-              Positioned.fill(child: _CoverImage(key: ValueKey(story.id), src: story.coverImageUrl, fit: BoxFit.cover)),
+              Positioned.fill(
+                  child: _CoverImage(
+                      key: ValueKey(story.id),
+                      src: story.coverImageUrl,
+                      fit: BoxFit.cover)),
               _DownloadedBadge(storyId: story.id),
               Positioned.fill(
                 child: DecoratedBox(
@@ -836,9 +884,6 @@ class _GridStoryThumb extends StatelessWidget {
   }
 }
 
-
-
-
 class _SectionCard extends StatelessWidget {
   final String title;
   final VoidCallback? onMore;
@@ -849,14 +894,17 @@ class _SectionCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final dark = Theme.of(context).brightness == Brightness.dark;
-    final card =
-        dark ? Colors.white.withOpacity(0.06) : Colors.white;
+    final card = dark ? Colors.white.withOpacity(0.06) : Colors.white;
     final onBg = dark ? Colors.white : Colors.black;
 
     return Container(
       margin: const EdgeInsets.symmetric(vertical: 8),
-      decoration:
-          BoxDecoration(color: card, borderRadius: BorderRadius.circular(16), border: Theme.of(context).brightness == Brightness.dark ? null : Border.all(color: Colors.black.withOpacity(0.06))),
+      decoration: BoxDecoration(
+          color: card,
+          borderRadius: BorderRadius.circular(16),
+          border: Theme.of(context).brightness == Brightness.dark
+              ? null
+              : Border.all(color: Colors.black.withOpacity(0.06))),
       clipBehavior: Clip.antiAlias,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -869,17 +917,15 @@ class _SectionCard extends StatelessWidget {
                   child: Text(
                     title,
                     style: TextStyle(
-                        color: onBg,
-                        fontWeight: FontWeight.w800,
-                        fontSize: 18),
+                        color: onBg, fontWeight: FontWeight.w800, fontSize: 18),
                   ),
                 ),
                 if (onMore != null)
                   TextButton.icon(
                     onPressed: onMore,
                     icon: Text('View All',
-                        style:
-                            TextStyle(fontWeight: FontWeight.w700, color: onBg)),
+                        style: TextStyle(
+                            fontWeight: FontWeight.w700, color: onBg)),
                     label: Icon(Icons.chevron_right_rounded, color: onBg),
                   ),
               ],
@@ -908,8 +954,7 @@ class _CategorySectionCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final dark = Theme.of(context).brightness == Brightness.dark;
-    final card =
-        dark ? Colors.white.withOpacity(0.06) : Colors.white;
+    final card = dark ? Colors.white.withOpacity(0.06) : Colors.white;
     final onBg = dark ? Colors.white : Colors.black;
 
     const double itemHeight = 60;
@@ -917,8 +962,12 @@ class _CategorySectionCard extends StatelessWidget {
 
     return Container(
       margin: const EdgeInsets.fromLTRB(0, 4, 0, 8),
-      decoration:
-          BoxDecoration(color: card, borderRadius: BorderRadius.circular(16), border: Theme.of(context).brightness == Brightness.dark ? null : Border.all(color: Colors.black.withOpacity(0.06))),
+      decoration: BoxDecoration(
+          color: card,
+          borderRadius: BorderRadius.circular(16),
+          border: Theme.of(context).brightness == Brightness.dark
+              ? null
+              : Border.all(color: Colors.black.withOpacity(0.06))),
       clipBehavior: Clip.antiAlias,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -931,9 +980,7 @@ class _CategorySectionCard extends StatelessWidget {
                   child: Text(
                     'Genre Picks',
                     style: TextStyle(
-                        color: onBg,
-                        fontWeight: FontWeight.w800,
-                        fontSize: 18),
+                        color: onBg, fontWeight: FontWeight.w800, fontSize: 18),
                   ),
                 ),
                 IconButton(
@@ -1002,8 +1049,9 @@ class _GenreTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final titleColor =
-        Theme.of(context).brightness == Brightness.dark ? Colors.white : Colors.black;
+    final titleColor = Theme.of(context).brightness == Brightness.dark
+        ? Colors.white
+        : Colors.black;
 
     final q = FirebaseFirestore.instance
         .collection('stories')
@@ -1026,8 +1074,10 @@ class _GenreTile extends StatelessWidget {
               child: FutureBuilder<QuerySnapshot<Map<String, dynamic>>>(
                 future: q.get(),
                 builder: (context, s) {
-                  if (s.hasError) return const Icon(Icons.warning, color: Colors.blue, size: 16);
-                  
+                  if (s.hasError)
+                    return const Icon(Icons.warning,
+                        color: Colors.blue, size: 16);
+
                   String? coverUrl;
                   if (s.hasData && s.data!.docs.isNotEmpty) {
                     final story = Story.fromFirestore(s.data!.docs.first);
@@ -1075,7 +1125,9 @@ class _WhatsNewRow extends StatelessWidget {
         stream: stream,
         builder: (context, snap) {
           if (snap.hasError) {
-            return const Center(child: Text("Index needed (see log)", style: TextStyle(color: Colors.grey)));
+            return const Center(
+                child: Text("Index needed (see log)",
+                    style: TextStyle(color: Colors.grey)));
           }
 
           if (!snap.hasData) {
@@ -1143,12 +1195,12 @@ class _WhatsNewCard extends StatelessWidget {
             ? story.language
             : langOverride;
 
-    final String? storyNoLabel = (effectiveNo == null)
-        ? null
-        : effectiveNo.toString().padLeft(2, '0');
-    final String? langLabel = (effectiveLang == null || effectiveLang.trim().isEmpty)
-        ? null
-        : effectiveLang.trim().toUpperCase();
+    final String? storyNoLabel =
+        (effectiveNo == null) ? null : effectiveNo.toString().padLeft(2, '0');
+    final String? langLabel =
+        (effectiveLang == null || effectiveLang.trim().isEmpty)
+            ? null
+            : effectiveLang.trim().toUpperCase();
 
     return InkWell(
       onTap: () => Navigator.push(
@@ -1160,7 +1212,9 @@ class _WhatsNewCard extends StatelessWidget {
         child: Stack(
           alignment: Alignment.bottomLeft,
           children: [
-            Positioned.fill(child: _CoverImage(key: ValueKey(story.id), src: story.coverImageUrl)),
+            Positioned.fill(
+                child: _CoverImage(
+                    key: ValueKey(story.id), src: story.coverImageUrl)),
             Positioned(
               top: 12,
               right: 12,
@@ -1170,7 +1224,8 @@ class _WhatsNewCard extends StatelessWidget {
               left: 14,
               bottom: 66,
               child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                 decoration: BoxDecoration(
                   color: Colors.black.withOpacity(0.22),
                   borderRadius: BorderRadius.circular(12),
@@ -1197,7 +1252,6 @@ class _WhatsNewCard extends StatelessWidget {
                     )
                   else
                     const SizedBox(width: 44, height: 44),
-
                   GestureDetector(
                     onTap: () => Navigator.push(
                       context,
@@ -1207,7 +1261,7 @@ class _WhatsNewCard extends StatelessWidget {
                       width: 46,
                       height: 32,
                       decoration: BoxDecoration(
-                        color: const Color(0xFFFF0000), 
+                        color: const Color(0xFFFF0000),
                         borderRadius: BorderRadius.circular(10),
                       ),
                       child: const Center(
@@ -1228,6 +1282,7 @@ class _WhatsNewCard extends StatelessWidget {
     );
   }
 }
+
 // ---------------------------------------------------------------------------
 //  _HorizontalStories (Updated to use exact square size)
 // ---------------------------------------------------------------------------
@@ -1244,13 +1299,16 @@ class _HorizontalStories extends StatelessWidget {
     final double itemSize = (screenW * 0.44).clamp(150.0, 200.0);
 
     return SizedBox(
-      height: itemSize, // Force the scroll container to match the item height (Square)
+      height:
+          itemSize, // Force the scroll container to match the item height (Square)
       child: StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
         stream: stream,
         builder: (context, snap) {
           if (snap.hasError) {
             print("Firestore Error: ${snap.error}");
-            return const Center(child: Text("Index needed (see log)", style: TextStyle(color: Colors.grey, fontSize: 10)));
+            return const Center(
+                child: Text("Index needed (see log)",
+                    style: TextStyle(color: Colors.grey, fontSize: 10)));
           }
 
           if (!snap.hasData) {
@@ -1312,12 +1370,12 @@ class _StoryTile extends StatelessWidget {
             ? story.language
             : langOverride;
 
-    final String? storyNoLabel = (effectiveNo == null)
-        ? null
-        : effectiveNo.toString().padLeft(2, '0');
-    final String? langLabel = (effectiveLang == null || effectiveLang.trim().isEmpty)
-        ? null
-        : effectiveLang.trim().toUpperCase();
+    final String? storyNoLabel =
+        (effectiveNo == null) ? null : effectiveNo.toString().padLeft(2, '0');
+    final String? langLabel =
+        (effectiveLang == null || effectiveLang.trim().isEmpty)
+            ? null
+            : effectiveLang.trim().toUpperCase();
 
     return SizedBox(
       width: width,
@@ -1333,7 +1391,8 @@ class _StoryTile extends StatelessWidget {
             child: Stack(
               children: [
                 Positioned.fill(
-                    child: _CoverImage(key: ValueKey(story.id), src: story.coverImageUrl)),
+                    child: _CoverImage(
+                        key: ValueKey(story.id), src: story.coverImageUrl)),
                 _DownloadedBadge(storyId: story.id),
                 if (storyNoLabel != null || langLabel != null)
                   Positioned(
@@ -1515,7 +1574,8 @@ class _ViewAllPageState extends State<_ViewAllPage> {
                     controller: _controller,
                     physics: const AlwaysScrollableScrollPhysics(),
                     padding: const EdgeInsets.all(16),
-                    gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                    gridDelegate:
+                        const SliverGridDelegateWithFixedCrossAxisCount(
                       crossAxisCount: 2,
                       mainAxisSpacing: 12,
                       crossAxisSpacing: 12,
@@ -1618,8 +1678,8 @@ class _CoverImageState extends State<_CoverImage>
     final p = widget.src.trim();
     if (p.isEmpty) return;
     if (p.startsWith('https://') || p.startsWith('http://')) {
-      setState(() =>
-          _resolved = p.startsWith('http://') ? 'https://${p.substring(7)}' : p);
+      setState(() => _resolved =
+          p.startsWith('http://') ? 'https://${p.substring(7)}' : p);
       return;
     }
     if (p.startsWith('gs://')) {
@@ -1628,8 +1688,7 @@ class _CoverImageState extends State<_CoverImage>
         final url = await ref.getDownloadURL();
         if (!mounted) return;
         setState(() => _resolved = url);
-      } catch (_) {
-      }
+      } catch (_) {}
     }
   }
 
@@ -1657,8 +1716,8 @@ class _CoverImageState extends State<_CoverImage>
           });
         }
         return DecoratedBox(
-          decoration:
-              BoxDecoration(image: DecorationImage(image: provider, fit: widget.fit)),
+          decoration: BoxDecoration(
+              image: DecorationImage(image: provider, fit: widget.fit)),
         );
       },
     );

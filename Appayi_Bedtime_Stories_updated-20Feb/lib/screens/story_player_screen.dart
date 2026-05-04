@@ -26,7 +26,6 @@ import 'package:audio_story_app/widgets/app_loaders.dart';
 
 import 'package:audio_story_app/services/offline_story_store.dart';
 
-
 // --- Global Route Observer & State ---
 final RouteObserver<PageRoute<dynamic>> appRouteObserver =
     RouteObserver<PageRoute<dynamic>>();
@@ -230,8 +229,6 @@ class _StoryPlayerScreenState extends State<StoryPlayerScreen> with RouteAware {
   //     });
   //   });
   // }
-
-
 
   @override
   void didChangeDependencies() {
@@ -1279,7 +1276,7 @@ class _StoryPlayerScreenState extends State<StoryPlayerScreen> with RouteAware {
                         overflow: TextOverflow.ellipsis,
                         style: const TextStyle(
                           color: Colors.white,
-                          fontSize: 28,
+                          fontSize: 20,
                           fontWeight: FontWeight.w800,
                           height: 1.1,
                         ),

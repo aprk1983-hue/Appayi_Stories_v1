@@ -1,6 +1,5 @@
 // lib/screens/onboarding_carousel_screen.dart
 
-import 'package:audio_story_app/services/app_audio_service.dart';
 import 'package:flutter/material.dart';
 import 'package:audio_story_app/widgets/background_container.dart';
 import 'package:audio_story_app/utils/app_theme.dart';
@@ -77,79 +76,162 @@ class _OnboardingCarouselScreenState extends State<OnboardingCarouselScreen> {
   /// - SharedPreferences key: `notify_new_stories`
   /// - Default: ON (true)
   /// - User can disable later in Profile
+  // Future<void> _maybePromptForNotifications() async {
+  //   if (_notificationPopupChecked) return;
+  //   _notificationPopupChecked = true;
+
+  //   final prefs = await SharedPreferences.getInstance();
+  //   final saved = prefs.getBool('notify_new_stories');
+  //   final notifyEnabled = saved ?? true;
+  //   if (saved == null) {
+  //     // Persist the default ON state to match Profile screen.
+  //     await prefs.setBool('notify_new_stories', true);
+  //   }
+
+  //   // If user has turned it OFF in Profile (or previously tapped "Not now"),
+  //   // never prompt again here.
+  //   if (!notifyEnabled) return;
+
+  //   final settings = await FirebaseMessaging.instance.getNotificationSettings();
+  //   final status = settings.authorizationStatus;
+
+  //   // If already allowed (including provisional on iOS), no need to prompt.
+  //   if (status == AuthorizationStatus.authorized ||
+  //       status == AuthorizationStatus.provisional) {
+  //     // Ensure topic subscription matches toggle.
+  //     await FirebaseMessaging.instance.subscribeToTopic('new_stories');
+  //     return;
+  //   }
+
+  //   if (!mounted) return;
+
+  //   // Only show the *system* notification permission prompt (no custom dialog).
+  //   final req = await FirebaseMessaging.instance.requestPermission(
+  //     alert: true,
+  //     badge: true,
+  //     sound: true,
+  //   );
+
+  //   final granted = req.authorizationStatus == AuthorizationStatus.authorized ||
+  //       req.authorizationStatus == AuthorizationStatus.provisional;
+
+  //   if (granted) {
+  //     await prefs.setBool('notify_new_stories', true);
+  //     await FirebaseMessaging.instance.subscribeToTopic('new_stories');
+  //   } else {
+  //     // If user denies, align with Profile by turning the toggle OFF.
+  //     await prefs.setBool('notify_new_stories', false);
+  //     await FirebaseMessaging.instance.unsubscribeFromTopic('new_stories');
+  //   }
+  // }
+
+  bool _isNavigating = false; // Add this flag to prevent double navigation
+
+  Future<void> _goLogin() async {
+    // Prevent multiple taps while navigating
+    if (_isNavigating) return;
+
+    setState(() {
+      _isNavigating = true;
+    });
+
+    try {
+      // Show notification popup BEFORE going to login screen.
+      await _maybePromptForNotifications();
+
+      // Warm up login assets so the next screen paints immediately (no gray flash).
+      await Future.wait<void>([
+        precacheImage(
+            const AssetImage('assets/backgrounds/signin.png'), context),
+        precacheImage(
+            const AssetImage('assets/backgrounds/login_bg_purple.png'),
+            context),
+        precacheImage(const AssetImage('assets/google_logo.png'), context),
+      ]);
+
+      if (!mounted) return;
+
+      Navigator.of(context).pushReplacement(
+        _fadeRoute(const auth.LoginScreen()),
+      );
+    } catch (e) {
+      debugPrint('Error during navigation: $e');
+      if (mounted) {
+        setState(() {
+          _isNavigating = false;
+        });
+      }
+    }
+  }
+
+  /// Fixed method - better error handling for notifications
   Future<void> _maybePromptForNotifications() async {
     if (_notificationPopupChecked) return;
     _notificationPopupChecked = true;
 
-    final prefs = await SharedPreferences.getInstance();
-    final saved = prefs.getBool('notify_new_stories');
-    final notifyEnabled = saved ?? true;
-    if (saved == null) {
-      // Persist the default ON state to match Profile screen.
-      await prefs.setBool('notify_new_stories', true);
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final saved = prefs.getBool('notify_new_stories');
+      final notifyEnabled = saved ?? true;
+      if (saved == null) {
+        await prefs.setBool('notify_new_stories', true);
+      }
+
+      if (!notifyEnabled) return;
+
+      // Check if already granted
+      final settings =
+          await FirebaseMessaging.instance.getNotificationSettings();
+      final status = settings.authorizationStatus;
+
+      if (status == AuthorizationStatus.authorized ||
+          status == AuthorizationStatus.provisional) {
+        try {
+          await FirebaseMessaging.instance.subscribeToTopic('new_stories');
+        } catch (e) {
+          debugPrint('Topic subscription error: $e');
+        }
+        return;
+      }
+
+      if (!mounted) return;
+
+      final req = await FirebaseMessaging.instance.requestPermission(
+        alert: true,
+        badge: true,
+        sound: true,
+      );
+
+      final granted =
+          req.authorizationStatus == AuthorizationStatus.authorized ||
+              req.authorizationStatus == AuthorizationStatus.provisional;
+
+      if (granted) {
+        await prefs.setBool('notify_new_stories', true);
+        try {
+          await FirebaseMessaging.instance.subscribeToTopic('new_stories');
+        } catch (e) {
+          debugPrint('Topic subscription after grant error: $e');
+        }
+      } else {
+        await prefs.setBool('notify_new_stories', false);
+        try {
+          await FirebaseMessaging.instance.unsubscribeFromTopic('new_stories');
+        } catch (e) {
+          debugPrint('Topic unsubscription error: $e');
+        }
+      }
+    } catch (e) {
+      debugPrint('Notification handling error: $e');
+      // Don't rethrow - we don't want to block navigation for notification issues
     }
-
-    // If user has turned it OFF in Profile (or previously tapped "Not now"),
-    // never prompt again here.
-    if (!notifyEnabled) return;
-
-    final settings = await FirebaseMessaging.instance.getNotificationSettings();
-    final status = settings.authorizationStatus;
-
-    // If already allowed (including provisional on iOS), no need to prompt.
-    if (status == AuthorizationStatus.authorized ||
-        status == AuthorizationStatus.provisional) {
-      // Ensure topic subscription matches toggle.
-      await FirebaseMessaging.instance.subscribeToTopic('new_stories');
-      return;
-    }
-
-    if (!mounted) return;
-
-    // Only show the *system* notification permission prompt (no custom dialog).
-    final req = await FirebaseMessaging.instance.requestPermission(
-      alert: true,
-      badge: true,
-      sound: true,
-    );
-
-    final granted = req.authorizationStatus == AuthorizationStatus.authorized ||
-        req.authorizationStatus == AuthorizationStatus.provisional;
-
-    if (granted) {
-      await prefs.setBool('notify_new_stories', true);
-      await FirebaseMessaging.instance.subscribeToTopic('new_stories');
-    } else {
-      // If user denies, align with Profile by turning the toggle OFF.
-      await prefs.setBool('notify_new_stories', false);
-      await FirebaseMessaging.instance.unsubscribeFromTopic('new_stories');
-    }
-  }
-
-  Future<void> _goLogin() async {
-    // Show notification popup BEFORE going to login screen.
-    await _maybePromptForNotifications();
-
-    // Warm up login assets so the next screen paints immediately (no gray flash).
-    await Future.wait<void>([
-      precacheImage(const AssetImage('assets/backgrounds/signin.png'), context),
-      precacheImage(
-          const AssetImage('assets/backgrounds/login_bg_purple.png'), context),
-      precacheImage(const AssetImage('assets/google_logo.png'), context),
-    ]);
-
-    if (!mounted) return;
-
-    Navigator.of(context).pushReplacement(
-      _fadeRoute(const auth.LoginScreen()),
-    );
   }
 
   Widget _skipButton() {
     return SizedBox(
       width: 140,
       child: ElevatedButton(
-        onPressed: _goLogin,
+        onPressed: _isNavigating ? null : _goLogin,
         style: ElevatedButton.styleFrom(
           backgroundColor: Colors.black.withOpacity(0.85),
           foregroundColor: Colors.orangeAccent, // ✨ NEW: Sets text color

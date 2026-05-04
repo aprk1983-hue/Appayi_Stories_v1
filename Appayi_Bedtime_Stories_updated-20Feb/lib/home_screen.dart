@@ -361,9 +361,6 @@ class _HomeScreenState extends State<HomeScreen>
             ? const Color(0xFFE91E63)
             : const Color(0xFF9C27B0);
 
-    // Language selector sizing (pinned header)
-    // Keep a fixed button width (as if 3 buttons are visible). If there are more
-    // than 3 languages, the row scrolls horizontally.
     final List<String> langButtons =
         _selectedLanguages.isNotEmpty ? _selectedLanguages : <String>['en'];
     const double pinnedLangHeaderHeight =
@@ -413,19 +410,6 @@ class _HomeScreenState extends State<HomeScreen>
                 ),
               ],
             ),
-            // actions: [
-            //   IconButton(
-            //     tooltip: 'Downloads',
-            //     icon: Icon(Icons.download_for_offline_rounded, color: onBg),
-            //     onPressed: () => Navigator.of(context).push(_downloadsRoute()),
-            //   ),
-            //   IconButton(
-            //     tooltip: 'Rewards',
-            //     icon: _goldTrophyIcon(onBg),
-            //     onPressed: () => Navigator.of(context).push(_rewardsRoute()),
-            //   ),
-            //   const SizedBox(width: 8),
-            // ],
           ),
 
           body: RefreshIndicator(

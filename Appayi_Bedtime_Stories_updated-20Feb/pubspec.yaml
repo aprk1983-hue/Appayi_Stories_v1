@@ -2,7 +2,7 @@ name: audio_story_app
 description: "A new Flutter project."
 publish_to: 'none'
 
-version: 1.0.0+1
+version: 1.0.2+1
 
 environment:
   sdk: '>=3.4.0 <4.0.0'
@@ -19,7 +19,7 @@ dependencies:
   shared_preferences: ^2.3.2
   url_launcher: ^6.3.0
   confetti: ^0.7.0
-  purchases_flutter: ^9.12.0
+  purchases_flutter: ^10.0.1
   
   audio_service: ^0.18.18 
 
@@ -43,7 +43,7 @@ dependencies:
   # For Deep Linking & Sharing
   app_links: ^6.4.1
   share_plus: ^10.0.0
-  purchases_ui_flutter: ^9.12.0
+  purchases_ui_flutter: ^10.0.1
   provider: ^6.1.5+1
   sign_in_with_apple: ^7.0.1
 

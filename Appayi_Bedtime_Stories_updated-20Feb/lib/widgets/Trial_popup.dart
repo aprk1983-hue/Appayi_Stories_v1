@@ -1,6 +1,7 @@
 // lib/widgets/trial_popup.dart
 import 'package:flutter/material.dart';
 import '../paywall.dart';
+import 'parent_gate.dart' as gate;
 
 class TrialPopup extends StatelessWidget {
   final int remainingDays;
@@ -114,18 +115,47 @@ class TrialPopup extends StatelessWidget {
                 padding: const EdgeInsets.fromLTRB(24, 8, 24, 24),
                 child: Column(
                   children: [
-                    // Subscribe Button - Show for both trial and expired
+                    // Subscribe Button - FIXED: Don't pop first!
                     ElevatedButton(
-                      onPressed: () {
-                        Navigator.pop(context);
-                        // Show paywall with isShow = true to force show even during trial
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) =>
-                                const RevenueCatSplashScreen(isShow: true),
-                          ),
+                      onPressed: () async {
+                        debugPrint('🔵 1. Subscribe button pressed');
+
+                        // IMPORTANT: Don't close the trial popup yet!
+                        // Show parent gate on top of the trial popup
+                        final bool isVerified = await gate.requireParentPin(
+                          context, // Use the trial popup's context (still valid)
+                          reason:
+                              'Parental permission required for subscription',
+                          forceSetupIfMissing: true,
                         );
+
+                        debugPrint('🔵 2. Verification result: $isVerified');
+
+                        if (!isVerified) {
+                          debugPrint('🔵 3. Verification failed or cancelled');
+                          return;
+                        }
+
+                        debugPrint(
+                            '🔵 4. Verification successful, closing trial popup');
+
+                        // Now close the trial popup
+                        if (context.mounted) {
+                          Navigator.pop(context);
+                        }
+
+                        debugPrint('🔵 5. Showing paywall');
+
+                        // Show paywall
+                        if (context.mounted) {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) =>
+                                  const RevenueCatSplashScreen(isShow: true),
+                            ),
+                          );
+                        }
                       },
                       style: ElevatedButton.styleFrom(
                         backgroundColor: const Color(0xFFFF9800),

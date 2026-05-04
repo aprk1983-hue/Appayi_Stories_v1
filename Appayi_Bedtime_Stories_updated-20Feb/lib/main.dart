@@ -382,11 +382,11 @@ class _AuthGateState extends State<AuthGate> {
                   return const _Loading();
                 }
 
-                // Show paywall if trial expired and no subscription
-                if (_shouldShowPaywall) {
-                  debugPrint("🚫 Showing paywall - no access");
-                  return PaywallView();
-                }
+                // // Show paywall if trial expired and no subscription
+                // if (_shouldShowPaywall) {
+                //   debugPrint("🚫 Showing paywall - no access");
+                //   // return PaywallView();
+                // }
 
                 // Has access (either paid or in trial) - go to main app
                 debugPrint("✅ User has access (paid or trial)");

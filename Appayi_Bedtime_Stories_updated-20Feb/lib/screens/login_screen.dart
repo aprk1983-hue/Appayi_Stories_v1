@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'package:audio_story_app/services/app_audio_service.dart';
 import 'package:audio_story_app/services/subscription.dart';
 import 'package:audio_story_app/services/trialService.dart';
 import 'package:flutter/material.dart'; // <-- This is the import it can't find
@@ -7,14 +6,11 @@ import 'package:purchases_flutter/purchases_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-
 import 'dart:io' show Platform;
 import 'package:flutter/foundation.dart' show kIsWeb;
-
 import 'package:audio_story_app/services/device_limit_service.dart';
 import 'package:audio_story_app/services/device_id_service.dart';
 import 'package:audio_story_app/services/device_info_service.dart';
-
 import 'package:audio_story_app/services/auth_service.dart';
 import 'package:audio_story_app/widgets/background_container.dart';
 import 'package:audio_story_app/utils/app_theme.dart';
@@ -852,32 +848,33 @@ class _LoginScreenState extends State<LoginScreen> {
                     const SizedBox(height: 12),
 
                     // Google
-                    InkWell(
-                      onTap: _isLoading ? null : _handleGoogle,
-                      borderRadius: BorderRadius.circular(28),
-                      child: Ink(
-                        width: 88,
-                        height: 88,
-                        decoration: BoxDecoration(
-                          color: Colors.black.withOpacity(0.88),
-                          borderRadius: BorderRadius.circular(24),
-                          boxShadow: const [
-                            BoxShadow(
-                                color: Colors.black38,
-                                blurRadius: 10,
-                                offset: Offset(0, 6))
-                          ],
-                        ),
-                        child: Center(
-                          child: Padding(
-                            padding: const EdgeInsets.all(16.0),
-                            child: Image.asset('assets/google_logo.png',
-                                fit: BoxFit.contain),
-                          ),
-                        ),
-                      ),
-                    ),
-
+                    Platform.isAndroid
+                        ? InkWell(
+                            onTap: _isLoading ? null : _handleGoogle,
+                            borderRadius: BorderRadius.circular(28),
+                            child: Ink(
+                              width: 88,
+                              height: 88,
+                              decoration: BoxDecoration(
+                                color: Colors.black.withOpacity(0.88),
+                                borderRadius: BorderRadius.circular(24),
+                                boxShadow: const [
+                                  BoxShadow(
+                                      color: Colors.black38,
+                                      blurRadius: 10,
+                                      offset: Offset(0, 6))
+                                ],
+                              ),
+                              child: Center(
+                                child: Padding(
+                                  padding: const EdgeInsets.all(16.0),
+                                  child: Image.asset('assets/google_logo.png',
+                                      fit: BoxFit.contain),
+                                ),
+                              ),
+                            ),
+                          )
+                        : SizedBox(),
                     const SizedBox(height: 18),
                     const SizedBox(
                         height:

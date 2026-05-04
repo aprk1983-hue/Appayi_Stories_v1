@@ -12,7 +12,6 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:provider/provider.dart';
 import 'package:purchases_flutter/purchases_flutter.dart';
-import 'package:purchases_ui_flutter/views/paywall_view.dart';
 import 'firebase_options.dart';
 import 'package:audio_story_app/screens/onboarding_carousel_screen.dart';
 import 'package:audio_story_app/screens/onboarding_screen.dart';
